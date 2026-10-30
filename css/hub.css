@@ -292,3 +292,9 @@
 .nav-lock svg { width: 16px; height: 16px; }
 .app.rail .nav-lock { position: absolute; top: 4px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
 .app.rail .nav-lock svg { width: 12px; height: 12px; }
+
+/* Reduced motion: no sliding, lifting or fading on the course hub's cards, buttons, accordion and drawer; state changes still show. */
+@media (prefers-reduced-motion: reduce) {
+  .round-btn, .vcard, .link-card, .opt, .accordion summary::after, .hub-page .side, .hub-page .side.open, .hub-page .scrim { transition: none; }
+  .round-btn:hover, .vcard:hover, .link-card:hover { transform: none; }
+}

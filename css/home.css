@@ -43,7 +43,7 @@
 .home-hero { position: relative; overflow: hidden; background: var(--bg-hero); display: flex; flex-direction: column; padding: 28px var(--pad-r) 0; } /* photo is the last item on mobile: sit flush on the stats strip */
 .home-hero-photo {
   order: 2; position: relative; z-index: 0; height: 260px; margin: 28px calc(-1 * var(--pad-r)) 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 48px); mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--mask-solid) 48px); mask-image: linear-gradient(to bottom, transparent 0, var(--mask-solid) 48px);
 }
 .home-hero-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 40%; }
 :root[data-theme="dark"] .home-hero-img { filter: brightness(.88); } /* dims the photo only; nothing is drawn over the people */
@@ -88,7 +88,7 @@
   /* photo panel starts just right of the text column (headline max-width is 40vw from a 4.9vw inset); its first 7vw fades in.
      At every desktop width the faces start 13vw+ right of where that fade ends. */
   .home-hero-photo { order: 0; position: absolute; inset: 0 0 0 42vw; height: auto; margin: 0;
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7vw); mask-image: linear-gradient(to right, transparent 0, #000 7vw); }
+    -webkit-mask-image: linear-gradient(to right, transparent 0, var(--mask-solid) 7vw); mask-image: linear-gradient(to right, transparent 0, var(--mask-solid) 7vw); }
   .pill { margin-bottom: .9vw; padding: 9px 30px; font-size: 22px; }
   .org { margin-bottom: .7vw; }
   .home-hero h1 { max-width: 40vw; font-size: 4.8vw; }

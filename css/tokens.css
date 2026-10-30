@@ -32,6 +32,7 @@
   --danger-ink: #7A2315;
   --success: #1F7A55;
 
+  --mask-solid: #000;         /* opaque stop of an alpha mask: only its transparency is used, never its colour */
   --dark: #0B1512;            /* inverse chips: timer, countdown, video header */
   --on-dark: #FFFFFF;
   --next-bg: #0B1512;         /* the "Next action" card */
