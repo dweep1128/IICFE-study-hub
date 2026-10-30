@@ -1,7 +1,5 @@
 server/credentials/
-.env
 node_modules/
-
 .env*
 !.env.example
 .vercel
