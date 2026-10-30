@@ -1,6 +1,6 @@
 {
   "routes": [
-    { "src": "/(server|scripts)/.*", "status": 404 },
+    { "src": "/(server|scripts|content-src)/.*", "status": 404 },
     { "src": "/api/(.*)", "dest": "/api" },
     { "handle": "filesystem" }
   ]

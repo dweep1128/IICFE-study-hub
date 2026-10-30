@@ -32,6 +32,39 @@ const spreadsheetId = () => {
 };
 const range = (tab) => `'${tab.replace(/'/g, "''")}'`;
 
+// ---------- timeout + one retry for every runtime Google call ----------
+// A hung or flaky Google call must not hang a page: each call gets SHEETS_TIMEOUT_MS and, if it fails for a transient reason,
+// one more try after RETRY_DELAY_MS. The real error is always logged server-side (message only: Google errors can carry request details).
+// Calls that add a row (`appendsRow`) are retried only when the failure happened BEFORE Google could have received the request;
+// after a timeout the row may already exist, and a blind retry would duplicate it.
+const SHEETS_TIMEOUT_MS = Number(process.env.SHEETS_TIMEOUT_MS) || 8000; // env override exists for the test suite
+const RETRY_DELAY_MS = 400;
+const HTTP_TRANSIENT = new Set([429, 500, 502, 503, 504]);
+const NEVER_SENT = /ENOTFOUND|ECONNREFUSED|EAI_AGAIN/;
+const timeoutError = (label) => Object.assign(new Error(`Google Sheets did not answer within ${SHEETS_TIMEOUT_MS / 1000}s (${label})`), { code: "ETIMEDOUT" });
+
+function withTimeout(label, work) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(timeoutError(label)), SHEETS_TIMEOUT_MS); });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
+const isTransient = (err) =>
+  HTTP_TRANSIENT.has(Number(err.code ?? err.response?.status)) || /ETIMEDOUT|ECONNRESET|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|fetch failed|socket hang up/i.test(`${err.code ?? ""} ${err.message}`);
+
+async function guarded(label, call, { appendsRow = false } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await withTimeout(label, call());
+    } catch (err) {
+      const retry = attempt === 1 && isTransient(err) && (!appendsRow || NEVER_SENT.test(`${err.code ?? ""} ${err.message}`));
+      console.error(`[sheets] ${label} failed (attempt ${attempt}${retry ? ", retrying" : ""}):`, err.code ?? "", err.message);
+      if (!retry) throw err;
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
+  }
+}
+
 // Rows -> objects keyed by the header row. Blank rows are dropped; missing cells become "".
 function toObjects(values = []) {
   const [headers = [], ...rows] = values;
@@ -42,14 +75,14 @@ function toObjects(values = []) {
 
 // One API call for several tabs: Sheets allows ~60 reads/min per user, so batch where possible.
 async function readTabs(names) {
-  const res = await client().spreadsheets.values.batchGet({ spreadsheetId: spreadsheetId(), ranges: names.map(range) });
+  const res = await guarded(`read ${names.join(",")}`, () => client().spreadsheets.values.batchGet({ spreadsheetId: spreadsheetId(), ranges: names.map(range) }));
   return Object.fromEntries(res.data.valueRanges.map((vr, i) => [names[i], toObjects(vr.values)]));
 }
 
 const readTab = async (name) => (await readTabs([name]))[name];
 
 async function headersOf(name) {
-  const res = await client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: `${range(name)}!1:1` });
+  const res = await guarded(`headers ${name}`, () => client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: `${range(name)}!1:1` }));
   const headers = res.data.values?.[0] ?? [];
   if (!headers.length) throw new Error(`Tab "${name}" has no header row. Run: npm run seed`);
   return headers;
@@ -65,20 +98,20 @@ async function appendRows(name, objs) {
   if (!objs.length) return;
   const headers = await headersOf(name);
   objs.forEach((o) => assertKnownColumns(headers, o, name));
-  await client().spreadsheets.values.append({
+  await guarded(`append ${name}`, () => client().spreadsheets.values.append({
     spreadsheetId: spreadsheetId(),
     range: `${range(name)}!A1`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: objs.map((o) => headers.map((h) => o[h] ?? "")) },
-  });
+  }), { appendsRow: true });
 }
 
 const appendRow = (name, obj) => appendRows(name, [obj]);
 
 // Returns true if a row matched keyColumn === keyValue and was patched, false otherwise.
 async function updateRow(name, keyColumn, keyValue, patch) {
-  const res = await client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: range(name) });
+  const res = await guarded(`read ${name}`, () => client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: range(name) }));
   const [headers = [], ...rows] = res.data.values ?? [];
   const keyIdx = headers.indexOf(keyColumn);
   if (keyIdx < 0) throw new Error(`Tab "${name}" has no column "${keyColumn}"`);
@@ -86,12 +119,12 @@ async function updateRow(name, keyColumn, keyValue, patch) {
   const idx = rows.findIndex((r) => String(r[keyIdx] ?? "") === String(keyValue));
   if (idx < 0) return false;
   const row = headers.map((h, i) => (h in patch ? patch[h] : rows[idx][i] ?? ""));
-  await client().spreadsheets.values.update({
+  await guarded(`update ${name}`, () => client().spreadsheets.values.update({
     spreadsheetId: spreadsheetId(),
     range: `${range(name)}!A${idx + 2}`, // +1 for the header row, +1 for 1-based rows
     valueInputOption: "RAW",
     requestBody: { values: [row] },
-  });
+  }));
   return true;
 }
 

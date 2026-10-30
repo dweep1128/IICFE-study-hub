@@ -6,10 +6,10 @@
       "title": "Where Ideas Come From",
       "data": "s1/session.json",
       "items": [
-        { "key": "study-notes", "view": "notes", "label": "Study Notes", "file": "s1/FoundersLab_S1_1_Study_Notes.html", "storageKey": "fl-s1-notes-done", "requires": ["n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9"] },
-        { "key": "activities", "view": "activities", "label": "Activities", "file": "s1/FoundersLab_S1_2_Activities.html", "storageKey": "fl-s1-acts", "requires": ["wheel", "sort", "hats", "why"] },
-        { "key": "practice", "view": "practice", "label": "Practice Test", "file": "s1/FoundersLab_S1_3_Practice_Test.html", "storageKey": "fl-s1-practice-done" },
-        { "key": "real-test", "view": "final", "label": "Final Exam", "file": "s1/FoundersLab_S1_4_Real_Test.html", "storageKey": "fl-s1-real-slip" }
+        { "key": "study-notes", "view": "notes", "label": "Study Notes", "storageKey": "fl-s1-notes-done", "requires": ["n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9"] },
+        { "key": "activities", "view": "activities", "label": "Activities", "storageKey": "fl-s1-acts", "requires": ["wheel", "sort", "hats", "why"] },
+        { "key": "practice", "view": "practice", "label": "Practice Test", "storageKey": "fl-s1-practice-done" },
+        { "key": "real-test", "view": "final", "label": "Final Exam", "storageKey": "fl-s1-real-slip" }
       ]
     }
   ]
