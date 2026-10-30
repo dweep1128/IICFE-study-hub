@@ -8,11 +8,6 @@ const SITE = {
     title: "Shaping the\nfuture of\n{{Commerce,}}\n[[Finance &]]\nEntrepreneurship.",
     primary: { label: "Explore Courses", href: "courses.html", icon: "globe" },
   },
-  papers: [
-    { label: "Founder's Lab", href: "course.html?id=F001", icon: "bulb" },
-    { label: "ACCA F2", href: "courses.html", icon: "chart" },
-    { label: "ACCA F3", href: "courses.html", icon: "people" },
-  ],
   stats: [
     { label: "6+ Modules", icon: "layers" },
     { label: "Global", icon: "globe" },
@@ -44,27 +39,21 @@ const SITE = {
 
 const ICONS = {
   book: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H20v14H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/>',
-  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.7.6 1 1.300 1 2.100h5c0-.8.3-1.500 1-2.100A6 6 0 0 0 12 3z"/>',
-  chart: '<path d="M5 20v-6M12 20V6M19 20v-9M3 21h18"/>',
-  people: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M17 14c2.5 0 4.5 2 4.5 5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
   cap: '<path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>',
   case: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',
-  go: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
 };
 const icon = (name) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 
 function renderPage() {
-  const { hero, papers, stats, courses, faq } = SITE;
+  const { hero, stats, courses, faq } = SITE;
   $("[data-hero-pill]").textContent = hero.pill;
   $("[data-hero-org]").textContent = hero.org;
   $("[data-hero-title]").innerHTML = rich(hero.title);
   $("[data-hero-ctas]").innerHTML =
     `<a class="btn btn-gold btn-lg" href="${esc(hero.primary.href)}"><span class="btn-ic">${icon(hero.primary.icon)}</span>${esc(hero.primary.label)} ${ARROW}</a>`;
-  $("[data-papers]").innerHTML = papers.map((p) =>
-    `<li><a class="paper" href="${esc(p.href)}"><span class="paper-ic">${icon(p.icon)}</span><span class="paper-name">${esc(p.label)}</span><span class="paper-go">${icon("go")}</span></a></li>`).join("");
   $("[data-stats]").innerHTML = stats.map((s) => `<li>${icon(s.icon)}<span>${esc(s.label)}</span></li>`).join("");
 
   $("[data-courses-title]").innerHTML = rich(courses.title);
