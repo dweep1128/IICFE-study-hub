@@ -1,0 +1,4 @@
+# Not needed at runtime, so never uploaded to Vercel (also means no public URL can ever serve them).
+content-src
+founders-lab-export
+FOUNDERS_LAB_PORT_SPEC*.md
