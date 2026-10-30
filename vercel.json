@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "src": "/(server|scripts)/.*", "status": 404 },
+    { "src": "/api/(.*)", "dest": "/api" },
+    { "handle": "filesystem" }
+  ]
+}

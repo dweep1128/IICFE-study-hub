@@ -92,7 +92,7 @@ const fake = {
 const sheetsPath = require.resolve("./sheets.js");
 require.cache[sheetsPath] = { id: sheetsPath, filename: sheetsPath, loaded: true, exports: fake };
 
-require("./index.js");
+require("./index.js").listen(TEST_PORT);
 
 const seen = []; // every response body, scanned at the end for leaked passwords
 const call = async (p, opts = {}) => {

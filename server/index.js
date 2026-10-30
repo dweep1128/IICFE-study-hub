@@ -41,6 +41,7 @@ const isActive = (student) => lower(student.status) === "active";
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1); // behind Vercel's proxy: secure cookies and per-client rate limits need the forwarded IP/proto
 app.use((req, res, next) => {
   res.set({ "X-Content-Type-Options": "nosniff", "X-Frame-Options": "SAMEORIGIN", "Referrer-Policy": "same-origin" });
   next();
@@ -50,6 +51,8 @@ app.use("/api", express.json({ limit: BODY_LIMIT }), cookieParser(), (req, res, 
   next();
 });
 app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
+
+app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 function requireLogin(req, res, next) {
   try {
@@ -204,4 +207,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong. Please try again." });
 });
 
-app.listen(PORT, () => console.log(`IICFE Study Hub running at http://localhost:${PORT}`));
+// Vercel imports the app (api/index.js); only `npm start` / `node server/index.js` opens a port.
+module.exports = app;
+if (require.main === module) app.listen(PORT, () => console.log(`IICFE Study Hub running at http://localhost:${PORT}`));
