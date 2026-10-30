@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>(function(){var d=document.documentElement,p="system";try{p=localStorage.getItem("iicfe-theme")||"system"}catch(e){}d.dataset.theme=p==="dark"||(p!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"})()</script>
+  <title>IICFE Study Hub</title>
+  <meta name="description" content="IICFE Singapore Study Hub: structured ACCA learning with slides, activities and progress tracking.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body class="home">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <div class="topbar">IICFE SINGAPORE</div>
+  <header class="site-header" data-site-header data-cta></header>
+
+  <main id="main">
+    <section class="home-hero">
+      <div class="home-hero-photo"><img class="home-hero-img" src="assets/hero.png" alt="Three students collaborating on a laptop in a Singapore finance forum, with the city skyline behind them"></div>
+      <div class="home-hero-inner">
+        <p class="pill" data-hero-pill></p>
+        <p class="org" data-hero-org></p>
+        <h1 data-hero-title></h1>
+        <div class="home-ctas" data-hero-ctas></div>
+      </div>
+      <ul class="home-cards" data-papers aria-label="ACCA papers"></ul>
+    </section>
+
+    <section class="home-stats-wrap" aria-label="Key figures">
+      <ul class="home-stats" data-stats></ul>
+    </section>
+
+    <section class="container section" id="courses">
+      <div class="section-head fade">
+        <p class="eyebrow">Featured courses</p>
+        <h2 data-courses-title></h2>
+      </div>
+      <div class="grid" data-courses></div>
+      <p class="all-link fade"><a class="link" data-all-courses></a></p>
+    </section>
+
+    <section class="container section faq-sec" id="faq" aria-labelledby="faq-title">
+      <div class="faq-head">
+        <h2 id="faq-title" data-faq-title></h2>
+        <p class="faq-lede" data-faq-lede></p>
+      </div>
+      <div class="faq-list" data-faq></div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact" data-site-footer></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

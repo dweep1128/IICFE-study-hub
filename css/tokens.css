@@ -1,0 +1,161 @@
+/* Design tokens: the ONLY place colours are defined. Light is the default; dark overrides under [data-theme="dark"].
+   data-theme ("light" | "dark", already resolved from the user's preference) is set on <html> by the inline script in each page's <head>.
+   Contrast was checked against WCAG AA (4.5:1 text, 3:1 UI) for every text/background pair listed here. */
+:root {
+  color-scheme: light;
+  --bg: #FAFAF8;
+  --surface: #FFFFFF;
+  --bg-hero: #FFFFFF;         /* plain background behind the home hero text */
+  --surface-2: #F7F1E6;
+  --surface-hover: #F3ECE0;
+  --panel: color-mix(in srgb, var(--teal) 6%, var(--bg));      /* tinted navigation panel beside the reading area */
+  --surface-3: color-mix(in srgb, var(--teal) 14%, var(--bg));   /* current item inside that panel */
+  --border: #E6E8E4;
+  --text: #12261F;
+  --text-muted: #5F6E68;
+
+  --teal: #276E63;            /* accent: links, progress, completed states */
+  --teal-deep: #0F4C4C;       /* filled pills, bars and buttons that carry light text */
+  --teal-ink: #0F4C4C;        /* teal used as text on the home page */
+  --teal-tint: rgba(39, 110, 99, .10);
+  --on-teal: #FFFFFF;
+  --on-deep: #FFFFFF;
+
+  --gold: #8A6020;            /* primary buttons and accents (darkened from #A8793A to reach AA with white text) */
+  --gold-dark: #6F4D19;
+  --gold-tint: rgba(138, 96, 32, .12);
+  --on-gold: #FFFFFF;
+
+  --danger: #A5321F;
+  --danger-tint: #F7DAD3;
+  --on-danger: #FFFFFF;
+  --danger-ink: #7A2315;
+  --success: #1F7A55;
+
+  --dark: #0B1512;            /* inverse chips: timer, countdown, video header */
+  --on-dark: #FFFFFF;
+  --next-bg: #0B1512;         /* the "Next action" card */
+  --next-text: #FFFFFF;
+  --next-muted: rgba(255, 255, 255, .72);
+  --next-label: #D9A867;
+  --next-border: transparent;
+  --next-hover: #BD8A47;
+
+  --track: #EDEFEA;           /* progress bars and ring tracks */
+  --skel-a: #ECEEEA;
+  --skel-b: #F5F6F3;
+  --head-bg: #FCFCFA;         /* table header */
+  --glass: color-mix(in srgb, var(--bg) 72%, transparent);
+
+  --shadow: 0 1px 2px rgba(18, 38, 31, .04), 0 8px 24px rgba(18, 38, 31, .05);
+  --shadow-hover: 0 2px 4px rgba(18, 38, 31, .05), 0 18px 40px rgba(18, 38, 31, .09);
+  --shadow-pop: 0 18px 40px rgba(18, 38, 31, .14);
+  --overlay: rgba(11, 21, 18, .5);
+  --toast-bg: #12261F;
+  --toast-text: #FFFFFF;
+  --focus-w: 3px;
+  --frame-pad: 0px;           /* space around the partner iframe (see viewer in hub.css) */
+  --frame-radius: 0px;
+
+  --hl-yellow: #FBE9A6; --hl-green: #BFE8D2; --hl-pink: #F8CDDA;
+  --sw-yellow: #F5D547; --sw-green: #5CC592; --sw-pink: #F08BAA;
+  --ft-pdf-bg: #F7DAD3; --ft-pdf: #A5321F;
+  --ft-doc-bg: #DCE8F8; --ft-doc: #2B5BA6;
+  --ft-xls-bg: #D9EFE1; --ft-xls: #1F6B40;
+  --ft-ppt-bg: #FBE6D2; --ft-ppt: #A24F12;
+
+  /* Six Thinking Hats: a tinted surface plus the text on it (each pair is AA, 4.5:1 or better). */
+  --hat-white-bg: #FFFFFF; --hat-white-fg: #12261F;
+  --hat-red-bg: #FBE3DD; --hat-red-fg: #7A2315;
+  --hat-black-bg: #1F2A27; --hat-black-fg: #FFFFFF;
+  --hat-yellow-bg: #FBEFC2; --hat-yellow-fg: #5A4300;
+  --hat-green-bg: #D9F0DF; --hat-green-fg: #174D2B;
+  --hat-blue-bg: #DCE8F8; --hat-blue-fg: #1B3F73;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0C1516;
+  --surface: #131F20;
+  --bg-hero: #0C1516;
+  --surface-2: #182627;
+  --surface-hover: #1F3132;
+  --border: #243536;
+  --text: #E9F0EF;
+  --text-muted: #9DB2B0;
+
+  --teal: #4FB3A9;
+  --teal-deep: #0F4C4C;
+  --teal-ink: #4FB3A9;
+  --teal-tint: rgba(79, 179, 169, .14);
+  --on-teal: #0C1516;
+  --on-deep: #FFFFFF;
+
+  --gold: #D9A257;
+  --gold-dark: #E7B771;
+  --gold-tint: rgba(217, 162, 87, .16);
+  --on-gold: #1A1206;
+
+  --danger: #E5866F;
+  --danger-tint: rgba(229, 134, 111, .16);
+  --on-danger: #1A0A06;
+  --danger-ink: #F0A491;
+  --success: #5CC49A;
+
+  --dark: #223637;
+  --on-dark: #FFFFFF;
+  --next-bg: #182627;
+  --next-text: #E9F0EF;
+  --next-muted: #9DB2B0;
+  --next-label: #D9A257;
+  --next-border: #D9A257;
+  --next-hover: #E7B771;
+
+  --track: #243536;
+  --skel-a: #182627;
+  --skel-b: #223637;
+  --head-bg: #182627;
+  --glass: color-mix(in srgb, var(--bg) 72%, transparent);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 8px 24px rgba(0, 0, 0, .45);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, .45), 0 18px 40px rgba(0, 0, 0, .45);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, .45);
+  --overlay: rgba(0, 0, 0, .65);
+  --toast-bg: #182627;
+  --toast-text: #E9F0EF;
+  --focus-w: 2px;
+  --frame-pad: 16px;
+  --frame-radius: 14px;
+
+  --hl-yellow: #6B5A1C; --hl-green: #1F5A3F; --hl-pink: #6B2A40;
+  --ft-pdf-bg: rgba(229, 134, 111, .18); --ft-pdf: #F0A491;
+  --ft-doc-bg: rgba(110, 160, 235, .18); --ft-doc: #9DBFF2;
+  --ft-xls-bg: rgba(92, 196, 154, .18); --ft-xls: #7FD8B2;
+  --ft-ppt-bg: rgba(240, 150, 80, .18); --ft-ppt: #F2B27F;
+
+  --hat-white-bg: #E9F0EF; --hat-white-fg: #0C1516;
+  --hat-red-bg: #4A2620; --hat-red-fg: #FFD9D1;
+  --hat-black-bg: #070D0E; --hat-black-fg: #E9F0EF;
+  --hat-yellow-bg: #4A3C12; --hat-yellow-fg: #FBE7A0;
+  --hat-green-bg: #17402A; --hat-green-fg: #CDEFD8;
+  --hat-blue-bg: #17314F; --hat-blue-fg: #D3E4FA;
+}
+
+/* 150ms colour fade when the theme changes; skipped for reduced motion. theme.js adds .theme-fade only around a switch,
+   so ordinary hover transitions elsewhere are untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
+    transition: background-color .15s, color .15s, border-color .15s, fill .15s, stroke .15s !important;
+  }
+}
+
+/* The certificate is a "printed page": it stays light in both themes (the themed frame around it follows the theme). */
+:root, :root[data-theme="dark"] {
+  --paper: #FFFDF8; --paper-edge: #F7F1E6; --paper-ink: #12261F; --paper-muted: #55645E; --paper-gold: #8A6020;
+}
+
+/* Theme previews on the Settings page always show their own palette, whichever theme is active. */
+:root, :root[data-theme="dark"] {
+  --prev-light-bg: #FAFAF8; --prev-light-text: #12261F; --prev-light-accent: #8A6020;
+  --prev-dark-bg: #0C1516; --prev-dark-text: #E9F0EF; --prev-dark-accent: #D9A257;
+}

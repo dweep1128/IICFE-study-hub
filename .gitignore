@@ -1,0 +1,11 @@
+server/credentials/
+.env
+node_modules/
+
+.env*
+!.env.example
+.vercel
+dist/
+build/
+.DS_Store
+Thumbs.db

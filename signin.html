@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>(function(){var d=document.documentElement,p="system";try{p=localStorage.getItem("iicfe-theme")||"system"}catch(e){}d.dataset.theme=p==="dark"||(p!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"})()</script>
+  <title>Sign In · IICFE Study Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/signin.css">
+</head>
+<body class="home signin">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header" data-site-header data-cta></header>
+
+  <main id="main" class="si">
+    <section class="si-brand" aria-label="IICFE Study Hub">
+      <div class="si-brand-inner">
+        <p class="si-title">Study Hub</p>
+        <p class="si-line">Pick up where you left off.</p>
+      </div>
+    </section>
+
+    <section class="si-form-wrap">
+      <form class="si-form" data-signin-form novalidate>
+        <h1>Sign in</h1>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username" required maxlength="254">
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="pw">
+            <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="72">
+            <button class="pw-toggle" type="button" aria-pressed="false" aria-controls="password">Show</button>
+          </div>
+        </div>
+        <button class="btn btn-gold" type="submit">Sign In</button>
+        <p class="field-error" role="alert" data-error></p>
+        <p class="si-help">Need help? <a data-help-link>Contact us</a></p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact" data-site-footer></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/signin.js"></script>
+</body>
+</html>

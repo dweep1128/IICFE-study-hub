@@ -1,0 +1,1106 @@
+{
+  "schema": 1,
+  "session": {
+    "id": "s1",
+    "number": 1,
+    "title": "Where Ideas Come From",
+    "subtitle": "Startup Ideation",
+    "date": "Thu, 20 Aug 2026",
+    "time": "11:00 AM - 12:30 PM",
+    "venue": "ATL Room",
+    "mentors": [
+      {
+        "name": "Ajin Jose",
+        "role": "ACCA, Manager at Brevitty Incubation Hub; early-stage startup advisor"
+      },
+      {
+        "name": "Preyans Dargani",
+        "role": "Co-Founder, EIndiaWholesale and Prinsha Jewels; social media strategist"
+      }
+    ],
+    "credit": "Founders Lab x Maharaja Sawai Bhawani Singh School x IICFE Singapore",
+    "notesIntro": "Spot problems, dig to the root, test your idea and look at it from six sides. Everything from Session 1 in one place."
+  },
+  "notes": [
+    {
+      "id": "n1",
+      "tag": "Mission brief",
+      "title": "What you will be able to do",
+      "xp": 10,
+      "doneable": true,
+      "required": false,
+      "blocks": [
+        {
+          "type": "lead",
+          "html": "<b>Every startup begins with a problem someone is tired of.</b> Today you learned how to spot those problems, dig to their root, and check if your idea can actually work."
+        },
+        {
+          "type": "list",
+          "items": [
+            "Explain why <b>problems</b> are the best source of ideas",
+            "Test an idea: is it <b>Realistic, Executable, Unique</b>?",
+            "Find the real cause using the <b>Three Why Approach</b>",
+            "Look at an idea from six angles with the <b>Hat Approach</b>",
+            "Spot problems around you, like in the <b>Chandni Chowk Challenge</b>"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n2",
+      "tag": "Part 1",
+      "title": "Ideas hide inside problems",
+      "xp": 15,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "paragraph",
+          "style": "lead",
+          "html": "Founders rarely sit down and \"think of an idea\". They notice something annoying, slow, expensive or confusing, and they ask: <b>\"Why is this still a problem?\"</b>"
+        },
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "A good problem has three signs: it happens <b>often</b>, it bothers <b>many people</b>, and people are already trying to fix it in a messy way (a workaround)."
+        },
+        {
+          "type": "stories",
+          "items": [
+            {
+              "label": "Real story · India",
+              "title": "Zomato started with menus",
+              "html": "In 2008, Deepinder Goyal and Pankaj Chaddah noticed people struggling to see restaurant menus. They put menus online on a site called <b>Foodiebay</b>. That small fix later grew into <b>Zomato</b>."
+            },
+            {
+              "label": "Real story · USA",
+              "title": "Airbnb started with air mattresses",
+              "html": "In 2007, two friends in San Francisco could not pay their rent. Hotels were full because of a big conference, so they rented out <b>air mattresses</b> on their floor. That became <b>Airbnb</b>."
+            }
+          ]
+        },
+        {
+          "type": "quickcheck",
+          "question": "Quick check: which is the strongest problem to build on?",
+          "options": [
+            "\"I wish my pen was purple\"",
+            "\"The canteen queue is so long that half of us skip lunch every day\"",
+            "\"Rockets are expensive\""
+          ],
+          "correct": 1,
+          "why": "It happens daily, affects many students, and people already use a workaround (rushing or skipping)."
+        }
+      ]
+    },
+    {
+      "id": "n3",
+      "tag": "Part 2",
+      "title": "Networking: your first superpower",
+      "xp": 10,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "The session opened with a <b>networking icebreaker</b>. Why? Because the people you meet become your <b>co-founders, first customers, mentors and helpers</b>. Founders who talk to people learn faster."
+        },
+        {
+          "type": "steps",
+          "items": [
+            {
+              "label": "Step 1",
+              "title": "Open strong",
+              "html": "Say your name, your grade, and one thing you are curious about."
+            },
+            {
+              "label": "Step 2",
+              "title": "Ask, then listen",
+              "html": "Ask open questions: \"What annoys you most about...?\" Listen more than you talk."
+            },
+            {
+              "label": "Step 3",
+              "title": "Remember",
+              "html": "Note one thing about each person. Follow up later. That is how a network grows."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n4",
+      "tag": "Part 3",
+      "title": "The R-E-U test for any idea",
+      "xp": 20,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "flips",
+          "items": [
+            {
+              "letter": "R",
+              "title": "Realistic",
+              "front": "Can this work in the real world?",
+              "back": [
+                {
+                  "label": "Ask",
+                  "muted": false,
+                  "html": "Does the problem really exist? Will people actually use this? Is it legal and safe?"
+                },
+                {
+                  "label": "Fails",
+                  "muted": true,
+                  "html": "\"A flying school bus by next month.\""
+                }
+              ]
+            },
+            {
+              "letter": "E",
+              "title": "Executable",
+              "front": "Can <i>you</i> build a first version?",
+              "back": [
+                {
+                  "label": "Ask",
+                  "muted": false,
+                  "html": "Can our team make a simple version with our skills, time and money? What is the first small step?"
+                },
+                {
+                  "label": "Fails",
+                  "muted": true,
+                  "html": "\"Our own satellite network for the school.\""
+                }
+              ]
+            },
+            {
+              "letter": "U",
+              "title": "Unique",
+              "front": "Why choose yours?",
+              "back": [
+                {
+                  "label": "Ask",
+                  "muted": false,
+                  "html": "What is different or better than what already exists? Faster, cheaper, easier, more fun, for a group nobody serves?"
+                },
+                {
+                  "label": "Fails",
+                  "muted": true,
+                  "html": "\"Another food delivery app, exactly like the big ones.\""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "label": "Remember",
+          "html": "A strong idea passes <b>all three</b>. If it fails one, do not throw it away. Change it until it passes."
+        },
+        {
+          "type": "quickcheck",
+          "question": "Quick check: \"A notes-sharing app that works just like WhatsApp groups.\" Which test does it fail?",
+          "options": [
+            "Realistic",
+            "Executable",
+            "Unique"
+          ],
+          "correct": 2,
+          "why": "Lots of apps already do exactly this, so it has nothing new to offer."
+        }
+      ]
+    },
+    {
+      "id": "n5",
+      "tag": "Part 4",
+      "title": "The Three Why Approach",
+      "xp": 20,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "The first problem you see is often only a <b>symptom</b>. Ask <b>\"Why?\"</b> three times to dig down to the <b>root cause</b>. Fix the root, and the symptom disappears too."
+        },
+        {
+          "type": "paragraph",
+          "style": "muted",
+          "html": "This idea comes from Toyota's famous \"5 Whys\" method. Three good whys are usually enough to find a problem worth solving."
+        },
+        {
+          "type": "whyLadder",
+          "start": "Many students skip lunch at the school canteen.",
+          "steps": [
+            {
+              "question": "Why do they skip lunch?",
+              "answer": "Because the queue is too long and the break is only 20 minutes."
+            },
+            {
+              "question": "Why is the queue so long?",
+              "answer": "Because everyone orders and pays at one counter at the same time."
+            },
+            {
+              "question": "Why does everyone order at the same time?",
+              "answer": "Because there is no way to order before the break starts."
+            }
+          ],
+          "root": "Root cause: no pre-ordering. Idea spark: a simple pre-order slip or app, so food is ready when the bell rings."
+        }
+      ]
+    },
+    {
+      "id": "n6",
+      "tag": "Part 5",
+      "title": "The Hat Approach",
+      "xp": 25,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "Thinking tool by <b>Edward de Bono</b> (from his 1985 book <i>Six Thinking Hats</i>). Each \"hat\" is one way of looking at an idea. Put on one hat at a time, so the team is not arguing in six directions at once."
+        },
+        {
+          "type": "hats",
+          "ideaLabel": "Our test idea:",
+          "idea": "\"SwapShelf\", an app where seniors sell old textbooks to juniors.",
+          "items": [
+            {
+              "id": "white",
+              "name": "White",
+              "focus": "Facts",
+              "text": "What do we know? 120 seniors finish exams each year. A new set of books costs around Rs 4,000. We need real numbers from a survey."
+            },
+            {
+              "id": "red",
+              "name": "Red",
+              "focus": "Feelings",
+              "text": "Juniors will love saving money. Some parents may feel unsure about used books. My gut says this is exciting."
+            },
+            {
+              "id": "black",
+              "name": "Black",
+              "focus": "Risks",
+              "text": "What could go wrong? Syllabus changes, torn books, no one to deliver, payment fights."
+            },
+            {
+              "id": "yellow",
+              "name": "Yellow",
+              "focus": "Benefits",
+              "text": "What is good? Cheaper books, less waste, seniors earn pocket money, the school looks eco-friendly."
+            },
+            {
+              "id": "green",
+              "name": "Green",
+              "focus": "New ideas",
+              "text": "What else could we try? Add notes and guides, a book-rent option, a pickup day in the school library."
+            },
+            {
+              "id": "blue",
+              "name": "Blue",
+              "focus": "Big picture",
+              "text": "How do we run this thinking? Plan: survey first, then a one-week trial with Grade 10 books, then decide."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n7",
+      "tag": "Part 6",
+      "title": "The Chandni Chowk Challenge",
+      "xp": 25,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "<b>Chandni Chowk</b> in Old Delhi is one of India's oldest and busiest markets, laid out in the 1600s in Shah Jahan's time. Thousands of shoppers, sellers, rickshaws and delivery carts share narrow lanes. That makes it a <b>problem goldmine</b>."
+        },
+        {
+          "type": "paragraph",
+          "style": "body",
+          "html": "In the challenge, you imagined walking through it and <b>spotted real problems</b>, then brainstormed fixes. Tap the spots on the street below."
+        },
+        {
+          "type": "spots",
+          "items": [
+            {
+              "name": "Parking chaos",
+              "problem": "Visitors circle for ages looking for parking, then walk far in the heat.",
+              "who": "Shoppers, families, drivers",
+              "sparks": "A parking-slot booking app; a park-and-ride e-cart from the metro."
+            },
+            {
+              "name": "Rickshaw jams",
+              "problem": "Cycle and e-rickshaws block lanes, so walking 200 metres takes 15 minutes.",
+              "who": "Shoppers, delivery workers",
+              "sparks": "Fixed rickshaw stands with a queue system; a live 'how crowded is it' map."
+            },
+            {
+              "name": "Lost shoppers",
+              "problem": "Tourists cannot find the right lane or a shop they saw online.",
+              "who": "Tourists, first-time visitors",
+              "sparks": "A lane-by-lane shop map; QR codes on lane corners."
+            },
+            {
+              "name": "Fair prices?",
+              "problem": "First-time buyers do not know the fair price, so they overpay or argue.",
+              "who": "Tourists, students",
+              "sparks": "A price-guide card; shop ratings for honest pricing."
+            },
+            {
+              "name": "Heat and thirst",
+              "problem": "Hours of walking in Delhi heat with few places to rest or refill water.",
+              "who": "Elderly shoppers, kids",
+              "sparks": "Water refill points with paid top-ups; shaded rest benches sponsored by shops."
+            },
+            {
+              "name": "Plastic waste",
+              "problem": "Every shop hands out plastic bags; bins overflow by evening.",
+              "who": "Residents, shopkeepers",
+              "sparks": "Rent-a-cloth-bag stations; rewards for returning bags."
+            },
+            {
+              "name": "Heavy bags",
+              "problem": "Wedding shoppers carry many heavy bags through crowded lanes.",
+              "who": "Families shopping for weddings",
+              "sparks": "Bag-drop lockers; 'shop now, deliver home' service."
+            },
+            {
+              "name": "Small sellers offline",
+              "problem": "Old family shops have great products but no online presence.",
+              "who": "Shop owners",
+              "sparks": "Help shops list on WhatsApp catalogues; a student-run photo service."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "label": "Problem-spotting checklist",
+          "html": "Use your senses: what do you <b>see</b> people struggling with, <b>hear</b> them complain about, notice them <b>waiting</b> for, or <b>paying too much</b> for? Then ask them about it."
+        }
+      ]
+    },
+    {
+      "id": "n8",
+      "tag": "Word bank",
+      "title": "Founder words",
+      "xp": 10,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "glossary",
+          "items": [
+            {
+              "term": "Startup",
+              "html": "A young business that tries a new way to solve a problem and aims to grow fast."
+            },
+            {
+              "term": "Problem",
+              "html": "Something that annoys, slows down or costs people. The seed of every idea."
+            },
+            {
+              "term": "Symptom",
+              "html": "What you notice on the surface. Not the real cause."
+            },
+            {
+              "term": "Root cause",
+              "html": "The deepest reason a problem happens. Found with the Three Whys."
+            },
+            {
+              "term": "Workaround",
+              "html": "The messy fix people use today. A sign the problem is real."
+            },
+            {
+              "term": "Brainstorm",
+              "html": "Producing many ideas fast, without judging them yet."
+            },
+            {
+              "term": "Networking",
+              "html": "Meeting people and building helpful relationships."
+            },
+            {
+              "term": "R-E-U test",
+              "html": "Realistic, Executable, Unique: the three checks for an idea."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n9",
+      "tag": "Wrap-up",
+      "title": "Five things to remember",
+      "xp": 15,
+      "doneable": true,
+      "required": true,
+      "blocks": [
+        {
+          "type": "takeaways",
+          "items": [
+            "<b>Start with a problem</b>, not with a cool gadget.",
+            "<b>Talk to people.</b> Your network is where users, mentors and teammates come from.",
+            "<b>Run the R-E-U test.</b> Fix the idea until it is Realistic, Executable and Unique.",
+            "<b>Ask \"Why?\" three times</b> to find the root cause.",
+            "<b>Switch hats</b> to see your idea from every side before you decide."
+          ]
+        },
+        {
+          "type": "note",
+          "label": "Founder homework",
+          "title": "Be a problem detective this week",
+          "html": "Write down <b>3 problems</b> you notice at home, in school or in your neighbourhood. Pick one and ask <b>\"Why?\" three times</b>. Bring it to the next session."
+        }
+      ]
+    }
+  ],
+  "activities": {
+    "intro": "Play as a team. Every right move earns points. Finish all four games to count towards the Final Exam.",
+    "team": {
+      "label": "Your team name",
+      "placeholder": "e.g. Rocket Founders"
+    },
+    "games": [
+      {
+        "id": "wheel",
+        "type": "wheel",
+        "no": 1,
+        "title": "Chandni Chowk Spin",
+        "blurb": "Spin the market wheel, get a real problem from the lanes of Chandni Chowk, and brainstorm fixes before the clock runs out.",
+        "meta": [
+          "2 rounds",
+          "90 seconds each",
+          "+10 per idea"
+        ],
+        "rounds": 2,
+        "seconds": 90,
+        "maxIdeas": 3,
+        "scoring": {
+          "ideaPts": 10,
+          "reuPts": 5
+        },
+        "items": [
+          {
+            "label": "Lost kids",
+            "text": "Children get separated from their families in the crowded lanes, and parents panic.",
+            "example": "wristbands with a parent's phone number"
+          },
+          {
+            "label": "No toilets",
+            "text": "There are very few clean public toilets for thousands of shoppers.",
+            "example": "a map of clean toilets in nearby shops"
+          },
+          {
+            "label": "Street food",
+            "text": "Shoppers love the food but worry about hygiene and clean water.",
+            "example": "a hygiene sticker rating for stalls"
+          },
+          {
+            "label": "Hand carts",
+            "text": "Workers pull very heavy hand carts of goods through narrow, crowded lanes.",
+            "example": "booking slots for early-morning deliveries"
+          },
+          {
+            "label": "Cash only",
+            "text": "Many small stalls only take cash, and nobody has change.",
+            "example": "helping stalls set up UPI QR codes"
+          },
+          {
+            "label": "Wedding rush",
+            "text": "In wedding season, shops get so crowded that customers wait for hours.",
+            "example": "a token or appointment system for big shops"
+          },
+          {
+            "label": "Tangled wires",
+            "text": "Old buildings have huge tangles of electric wires overhead. They look unsafe.",
+            "example": "a report-a-danger photo app for the area"
+          },
+          {
+            "label": "Language",
+            "text": "Foreign tourists cannot talk to shopkeepers about sizes, prices or fabrics.",
+            "example": "a picture card of common shop phrases"
+          }
+        ]
+      },
+      {
+        "id": "sort",
+        "type": "sorter",
+        "no": 2,
+        "title": "R-E-U Sorter",
+        "blurb": "Drag each idea into the right box. Does it pass all three tests, or does it fail Realistic, Executable or Unique?",
+        "meta": [
+          "12 idea cards",
+          "drag or tap",
+          "speed bonus under 2 min"
+        ],
+        "fastSecs": 120,
+        "scoring": {
+          "correctPts": 10,
+          "streakBonus": 5,
+          "streakAfter": 2,
+          "fastBonus": 20
+        },
+        "bins": [
+          {
+            "key": "P",
+            "label": "Strong idea",
+            "sub": "passes all 3"
+          },
+          {
+            "key": "R",
+            "label": "Not realistic",
+            "sub": "cannot work in real life"
+          },
+          {
+            "key": "E",
+            "label": "Not executable",
+            "sub": "too big for us to build"
+          },
+          {
+            "key": "U",
+            "label": "Not unique",
+            "sub": "just a copy"
+          }
+        ],
+        "cards": [
+          {
+            "text": "A school app to pre-order canteen food before the break",
+            "bin": "P",
+            "why": "A real daily problem, simple to build, and nothing like it exists at school."
+          },
+          {
+            "text": "A machine that teleports students to school to beat traffic",
+            "bin": "R",
+            "why": "Teleporting does not exist. It cannot work in the real world."
+          },
+          {
+            "text": "Our team of four builds a search engine better than Google this term",
+            "bin": "E",
+            "why": "Maybe useful, but far too big for a student team with no money."
+          },
+          {
+            "text": "A photo-sharing app exactly like Instagram, nothing different",
+            "bin": "U",
+            "why": "It copies something that already exists. Why would anyone switch?"
+          },
+          {
+            "text": "A cloth-bag rental stand at the local market with a Rs 10 deposit",
+            "bin": "P",
+            "why": "Solves plastic waste, cheap to start, and a fresh twist on bags."
+          },
+          {
+            "text": "A pill that makes you an expert in any subject overnight",
+            "bin": "R",
+            "why": "No such pill can exist. Not realistic."
+          },
+          {
+            "text": "Launch our own airline for school trips next month",
+            "bin": "E",
+            "why": "Planes, licences and crores of rupees. Not doable by students."
+          },
+          {
+            "text": "Another plain notebook brand with no special feature",
+            "bin": "U",
+            "why": "Thousands exist already. Nothing makes it stand out."
+          },
+          {
+            "text": "Seniors teach juniors maths in small paid groups after school",
+            "bin": "P",
+            "why": "Real need, easy to start, and juniors learn from people who just took the same exams."
+          },
+          {
+            "text": "Shoes that let you walk on water to cross the river",
+            "bin": "R",
+            "why": "Fun to imagine, but not possible in real life."
+          },
+          {
+            "text": "Build a full hospital inside our school by summer break",
+            "bin": "E",
+            "why": "A hospital needs doctors, land and huge money. Far beyond our reach."
+          },
+          {
+            "text": "A food-delivery app that copies Swiggy: same menus, same prices",
+            "bin": "U",
+            "why": "A copy with nothing new. Customers already have Swiggy."
+          }
+        ]
+      },
+      {
+        "id": "hats",
+        "type": "speed",
+        "no": 3,
+        "title": "Hat Hustle",
+        "blurb": "Your team is discussing PetPal, a weekend pet-sitting service run by students. Read each comment and tap which hat is speaking. Be quick: faster answers score more.",
+        "meta": [
+          "12 comments",
+          "9 seconds each",
+          "streak bonus"
+        ],
+        "how": "Idea: PetPal, students look after pets on weekends. Each comment comes from one of the six hats. Tap the right hat before the bar runs out.",
+        "seconds": 9,
+        "scoring": {
+          "basePts": 10,
+          "streakBonus": 5,
+          "streakFrom": 3
+        },
+        "options": [
+          {
+            "key": "W",
+            "label": "White: facts",
+            "tone": "white"
+          },
+          {
+            "key": "R",
+            "label": "Red: feelings",
+            "tone": "red"
+          },
+          {
+            "key": "B",
+            "label": "Black: risks",
+            "tone": "black"
+          },
+          {
+            "key": "Y",
+            "label": "Yellow: benefits",
+            "tone": "yellow"
+          },
+          {
+            "key": "G",
+            "label": "Green: new ideas",
+            "tone": "green"
+          },
+          {
+            "key": "U",
+            "label": "Blue: big picture",
+            "tone": "blue"
+          }
+        ],
+        "items": [
+          {
+            "text": "\"In our survey, 38 out of 100 families said they own a pet.\"",
+            "answer": "W",
+            "why": "A number from a survey is a fact."
+          },
+          {
+            "text": "\"Pet hostels near us charge about Rs 600 a night.\"",
+            "answer": "W",
+            "why": "A price you checked is a fact."
+          },
+          {
+            "text": "\"I just love this idea. It makes me so happy!\"",
+            "answer": "R",
+            "why": "Pure feeling, no reasons needed."
+          },
+          {
+            "text": "\"I have a gut feeling parents won't trust teenagers with their pets.\"",
+            "answer": "R",
+            "why": "A gut feeling is the Red hat."
+          },
+          {
+            "text": "\"What if a pet falls sick while we are looking after it?\"",
+            "answer": "B",
+            "why": "Looking for what could go wrong is the Black hat."
+          },
+          {
+            "text": "\"We might not have time for this during exam weeks.\"",
+            "answer": "B",
+            "why": "A risk or weakness is the Black hat."
+          },
+          {
+            "text": "\"Owners can travel without worry, and we earn pocket money.\"",
+            "answer": "Y",
+            "why": "Listing the good points is the Yellow hat."
+          },
+          {
+            "text": "\"Pets stay at home, so they feel less stressed.\"",
+            "answer": "Y",
+            "why": "A benefit is the Yellow hat."
+          },
+          {
+            "text": "\"What if we also offer dog-walking and pet photoshoots?\"",
+            "answer": "G",
+            "why": "New possibilities are the Green hat."
+          },
+          {
+            "text": "\"We could team up with the local vet for discounts.\"",
+            "answer": "G",
+            "why": "A creative new idea is the Green hat."
+          },
+          {
+            "text": "\"Let's hear the risks first, then the benefits, then decide.\"",
+            "answer": "U",
+            "why": "Organising the thinking is the Blue hat."
+          },
+          {
+            "text": "\"So far we have facts and risks. Next we need new ideas.\"",
+            "answer": "U",
+            "why": "Summing up and planning next steps is the Blue hat."
+          }
+        ]
+      },
+      {
+        "id": "why",
+        "type": "ladder",
+        "no": 4,
+        "title": "Why Ladder",
+        "blurb": "Climb to the root cause. At each rung, pick the answer that digs deeper instead of blaming someone or going off track.",
+        "meta": [
+          "3 puzzles",
+          "3 rungs each",
+          "+10 per first-try rung"
+        ],
+        "scoring": {
+          "rungPts": 10
+        },
+        "wrongText": "That blames someone or goes off track. Look for the cause.",
+        "puzzles": [
+          {
+            "start": "Students keep forgetting their homework.",
+            "root": "Root cause: there is no single, fixed place where homework is posted. Idea: a class homework board or one daily homework post.",
+            "rungs": [
+              {
+                "question": "Why do they forget?",
+                "options": [
+                  "Because students are lazy",
+                  "Because they note it in different places and lose track",
+                  "Because homework is boring"
+                ],
+                "correct": 1,
+                "why": "Scattered notes is a cause we can actually fix."
+              },
+              {
+                "question": "Why do they note it in different places?",
+                "options": [
+                  "Because notebooks are expensive",
+                  "Because they dislike teachers",
+                  "Homework is given out loud at the very end of class, in a rush"
+                ],
+                "correct": 2,
+                "why": "Now we know when and how it goes wrong."
+              },
+              {
+                "question": "Why is it given in a rush?",
+                "options": [
+                  "The bell rings suddenly and there is no fixed homework time or board",
+                  "Teachers want to trick students",
+                  "The school is too big"
+                ],
+                "correct": 0,
+                "why": "That is the root: no single fixed place for homework."
+              }
+            ]
+          },
+          {
+            "start": "Old clothes pile up in almost every home in the colony.",
+            "root": "Root cause: no regular, easy collection. Idea: a monthly doorstep pickup run by students that passes clothes to NGOs or upcyclers.",
+            "rungs": [
+              {
+                "question": "Why do they pile up?",
+                "options": [
+                  "People don't know what to do with them",
+                  "People love clutter",
+                  "Clothes are too colourful"
+                ],
+                "correct": 0,
+                "why": "Not knowing what to do is a real, fixable cause."
+              },
+              {
+                "question": "Why don't people know what to do with them?",
+                "options": [
+                  "Because nobody reads",
+                  "There is no easy, nearby place that collects them",
+                  "Because clothes are heavy"
+                ],
+                "correct": 1,
+                "why": "Getting closer: there is no easy way to give them away."
+              },
+              {
+                "question": "Why is there no nearby collection place?",
+                "options": [
+                  "The city hates recycling",
+                  "Clothes cannot be reused",
+                  "Collection drives are rare and nobody runs them regularly"
+                ],
+                "correct": 2,
+                "why": "That is the root: nothing regular and easy exists."
+              }
+            ]
+          },
+          {
+            "start": "Small shops near school are losing customers to online apps.",
+            "root": "Root cause: shop owners have no simple help to go online. Idea: a student service that photographs products and sets up WhatsApp catalogues for local shops.",
+            "rungs": [
+              {
+                "question": "Why are they losing customers?",
+                "options": [
+                  "Online apps are illegal",
+                  "Shopkeepers are not nice",
+                  "Customers can't see what the shop has without walking in"
+                ],
+                "correct": 2,
+                "why": "Visibility is a cause we can work on."
+              },
+              {
+                "question": "Why can't customers see what they have?",
+                "options": [
+                  "The shops have no online list or catalogue",
+                  "Customers have bad eyesight",
+                  "The shops are too small"
+                ],
+                "correct": 0,
+                "why": "Now it is specific: no online list."
+              },
+              {
+                "question": "Why don't they have an online catalogue?",
+                "options": [
+                  "Phones can't show catalogues",
+                  "The owners don't know how to make one and have no time",
+                  "Catalogues are banned"
+                ],
+                "correct": 1,
+                "why": "That is the root: missing skills and time."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "subtitle": "Four team games: spin the market wheel, sort ideas, hustle through the hats and climb the why ladder."
+  },
+  "tests": {
+    "practice": {
+      "minutes": 10,
+      "qs": [
+        {
+          "q": "Where do most great startup ideas come from?",
+          "o": [
+            "A cool gadget you saw in a movie",
+            "A problem that many people face often",
+            "Copying the most popular app",
+            "Pure luck"
+          ],
+          "a": 1,
+          "why": "Founders start by noticing problems people face again and again."
+        },
+        {
+          "q": "In the R-E-U test, what does \"Executable\" mean?",
+          "o": [
+            "The idea is fun",
+            "Our team can build a first version with our skills, time and money",
+            "The idea makes money on day one",
+            "Nobody has thought of it before"
+          ],
+          "a": 1,
+          "why": "Executable asks: can WE actually make a simple first version?"
+        },
+        {
+          "q": "Why do we ask \"Why?\" three times?",
+          "o": [
+            "To annoy the customer",
+            "To find who is to blame",
+            "To dig past the symptom to the root cause",
+            "To make the meeting longer"
+          ],
+          "a": 2,
+          "why": "Each why digs one level deeper, until you reach the real cause."
+        },
+        {
+          "q": "Which hat looks for risks and what could go wrong?",
+          "o": [
+            "Yellow hat",
+            "Green hat",
+            "Red hat",
+            "Black hat"
+          ],
+          "a": 3,
+          "why": "The Black hat is the careful critic who spots dangers."
+        },
+        {
+          "q": "How did Zomato begin in 2008?",
+          "o": [
+            "As a website that put restaurant menus online",
+            "As a food truck",
+            "As a cooking TV show",
+            "As a grocery store"
+          ],
+          "a": 0,
+          "why": "It started as Foodiebay, putting restaurant menus online."
+        },
+        {
+          "q": "What is a \"workaround\"?",
+          "o": [
+            "A finished product",
+            "The messy fix people use today because no good solution exists",
+            "A type of exercise",
+            "A business plan"
+          ],
+          "a": 1,
+          "why": "Workarounds are a clue that the problem is real and painful."
+        },
+        {
+          "q": "What did teams do in the Chandni Chowk Challenge?",
+          "o": [
+            "Raced through the market",
+            "Spotted real problems in a busy market and brainstormed solutions",
+            "Sold products to tourists",
+            "Drew a map of Delhi"
+          ],
+          "a": 1,
+          "why": "It trained your eyes to find problems and turn them into ideas."
+        },
+        {
+          "q": "\"A machine that teleports students to school.\" Which test does it fail first?",
+          "o": [
+            "Realistic",
+            "Unique",
+            "Executable only",
+            "It passes all three"
+          ],
+          "a": 0,
+          "why": "Teleporting cannot happen in the real world, so it is not realistic."
+        },
+        {
+          "q": "Why is networking useful for a young founder?",
+          "o": [
+            "It replaces studying",
+            "You meet future co-founders, users and mentors",
+            "It guarantees funding",
+            "It is only for adults"
+          ],
+          "a": 1,
+          "why": "People you meet can become your team, customers and guides."
+        },
+        {
+          "q": "Which hat is about fresh, creative new ideas?",
+          "o": [
+            "White hat",
+            "Blue hat",
+            "Green hat",
+            "Black hat"
+          ],
+          "a": 2,
+          "why": "Green means growth: new options and creative thinking."
+        }
+      ]
+    },
+    "final": {
+      "minutes": 10,
+      "qs": [
+        {
+          "q": "Which of these is the strongest problem to build a startup on?",
+          "o": [
+            "Something that happens once a year to one person",
+            "Something that happens daily to many people who already use a messy workaround",
+            "Something only you find funny",
+            "Something nobody has ever complained about"
+          ],
+          "a": 1,
+          "why": "Frequent, widespread, with workarounds: a strong problem."
+        },
+        {
+          "q": "\"A photo app exactly like Instagram, with nothing different.\" Which test does it fail?",
+          "o": [
+            "Realistic",
+            "Executable",
+            "Unique",
+            "It passes all three"
+          ],
+          "a": 2,
+          "why": "A copy with nothing new is not unique."
+        },
+        {
+          "q": "What does the White hat focus on?",
+          "o": [
+            "Facts, data and information",
+            "Feelings",
+            "New ideas",
+            "Risks"
+          ],
+          "a": 0,
+          "why": "White is neutral: facts and numbers only."
+        },
+        {
+          "q": "What is the Blue hat's job?",
+          "o": [
+            "Listing benefits",
+            "Sharing gut feelings",
+            "Managing the thinking: planning, summing up, deciding next steps",
+            "Finding problems"
+          ],
+          "a": 2,
+          "why": "Blue is the organiser of the whole thinking process."
+        },
+        {
+          "q": "In the Three Why Approach, the first problem you notice is usually...",
+          "o": [
+            "The root cause",
+            "A symptom",
+            "The final solution",
+            "Not important"
+          ],
+          "a": 1,
+          "why": "What you see first is a symptom. The whys lead to the root cause."
+        },
+        {
+          "q": "Airbnb began when its founders rented out...",
+          "o": [
+            "Hotel rooms",
+            "Air mattresses on their floor",
+            "Cars",
+            "Office desks"
+          ],
+          "a": 1,
+          "why": "In 2007 they rented air mattresses when hotels were full."
+        },
+        {
+          "q": "\"Our class builds a full hospital inside school by summer.\" Which test does it fail?",
+          "o": [
+            "Unique",
+            "Executable",
+            "Realistic only",
+            "It passes all three"
+          ],
+          "a": 1,
+          "why": "Hospitals exist, but building one is far beyond a student team."
+        },
+        {
+          "q": "Who created the Six Thinking Hats method?",
+          "o": [
+            "Steve Jobs",
+            "Edward de Bono",
+            "Ratan Tata",
+            "Albert Einstein"
+          ],
+          "a": 1,
+          "why": "Edward de Bono described it in his 1985 book Six Thinking Hats."
+        },
+        {
+          "q": "What is the main rule while brainstorming?",
+          "o": [
+            "Judge every idea at once",
+            "Only the leader speaks",
+            "Produce many ideas fast, without judging them yet",
+            "Stop after one good idea"
+          ],
+          "a": 2,
+          "why": "Quantity first; judge and pick later."
+        },
+        {
+          "q": "Wearing the Red hat, you are allowed to...",
+          "o": [
+            "Share feelings and gut reactions without giving reasons",
+            "Only quote numbers",
+            "Only list risks",
+            "Run the meeting"
+          ],
+          "a": 0,
+          "why": "Red is for emotions and instincts."
+        }
+      ]
+    }
+  }
+}

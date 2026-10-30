@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>(function(){var d=document.documentElement,p="system";try{p=localStorage.getItem("iicfe-theme")||"system"}catch(e){}d.dataset.theme=p==="dark"||(p!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"})()</script>
+  <title>Courses · IICFE Study Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header" data-site-header></header>
+
+  <main id="main" class="page">
+    <section class="container">
+      <div class="page-head fade">
+        <p class="eyebrow">IICFE Study Hub</p>
+        <h1>Courses</h1>
+        <p class="lede">Structured ACCA learning, paper by paper.</p>
+      </div>
+      <div data-courses></div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact" data-site-footer></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/courses.js"></script>
+</body>
+</html>
