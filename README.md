@@ -11,10 +11,10 @@ The browser only ever talks to our own `/api`; only the server talks to Google.
 3. **Share the sheet** with the service account's `client_email` (open the sheet > Share > Editor).
 4. **Enable the API:** "Google Sheets API" must be enabled in the key's Google Cloud project.
 5. **`.env`** (git-ignored; copy `.env.example`): `SHEET_ID`, `SESSION_SECRET` (32+ random chars), `PORT` (default 3000).
-6. `npm run seed`: creates missing tabs/headers and demo rows. Safe to run twice.
+6. `npm run seed` (needs `DEMO_PASSWORD` in `.env`): creates missing tabs/headers and demo rows. Safe to run twice.
 7. `npm start`: site + API at http://localhost:3000
 
-Demo login: `demo@iicfe-demo.com` / `Demo@1234`
+Demo access is available on request.
 
 > **Student passwords are stored in plain text by founder decision. Anyone with access to the Google Sheet can read them. Restrict the sheet's sharing accordingly.**
 > To change a password, edit the `password` cell in the Students tab. It applies on that student's next sign-in (no restart).

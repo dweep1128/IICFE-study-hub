@@ -10,7 +10,7 @@ process.env.SESSION_SECRET = "test-secret-".padEnd(40, "x");
 delete process.env.ANTHROPIC_API_KEY; // keyword chat mode
 const BASE = `http://localhost:${TEST_PORT}`;
 
-const PW = "Demo@1234"; // plain text in the sheet, by founder decision
+const PW = "Fixture#Pw-1234"; // plain text in the sheet, by founder decision
 const OTHER_PW = "Other#5678";
 const iso = (days) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 const PARAS = "First paragraph about assets and liabilities.\n\nSecond paragraph about the going concern basis.";
@@ -130,7 +130,7 @@ const login = async (email, password = email.startsWith("other") ? OTHER_PW : PW
   // validation + bad credentials
   assert.equal((await post("/api/login", { email: "nope", password: "x" })).status, 400);
   assert.equal((await post("/api/login", { email: "demo@iicfe-demo.com", password: "wrong" })).status, 401);
-  assert.equal((await post("/api/login", { email: "ghost@iicfe-demo.com", password: "Demo@1234" })).status, 401);
+  assert.equal((await post("/api/login", { email: "ghost@iicfe-demo.com", password: PW })).status, 401);
   assert.equal((await post("/api/login", { email: "off@iicfe-demo.com", password: PW })).status, 401);
   assert.equal((await post("/api/login", { email: "demo@iicfe-demo.com", password: PW.toLowerCase() })).status, 401, "comparison is case-sensitive");
   assert.equal((await post("/api/login", { email: "demo@iicfe-demo.com", password: PW + "x" })).status, 401, "longer password rejected");

@@ -3,7 +3,7 @@ try { process.loadEnvFile(require("path").join(__dirname, "..", ".env")); } catc
 const sheets = require("./sheets");
 const { TABS } = require("./schema");
 
-const DEMO_PASSWORD = "Demo@1234";
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD; // set in .env; never committed
 const DAY_MS = 86_400_000;
 const FOUNDERS_LAB = "F001";
 const FOUNDERS_LAB_SUBTITLE = "Build your first startup";
@@ -26,6 +26,7 @@ function insertIfAbsent(tab, keyCols, row) {
 }
 
 async function main() {
+  if (!DEMO_PASSWORD) throw new Error("DEMO_PASSWORD is not set (see .env.example)");
   if (!sheets.hasCredentials()) throw Object.assign(new Error("No service account credentials found"), { kind: "NO_KEY" });
 
   console.log("Tabs:");
