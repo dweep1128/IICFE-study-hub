@@ -14,7 +14,13 @@ const next = (kind) => {
   if (step === "ok") return Promise.resolve({ data: { valueRanges: [{ values: [["a"], ["1"]] }], values: [["a"]] } });
   return Promise.reject(step);
 };
-const fakeApi = { spreadsheets: { values: { batchGet: () => next("batchGet"), get: () => Promise.resolve({ data: { values: [["a"]] } }), append: () => next("append") } } };
+const updates = [];
+const fakeApi = { spreadsheets: { values: {
+  batchGet: () => next("batchGet"),
+  get: () => Promise.resolve({ data: { values: [["k", "v"], ["1", "open"], ["2", "closed"]] } }),
+  append: () => next("append"),
+  update: (req) => { updates.push(req.requestBody.values[0]); return Promise.resolve({}); },
+} } };
 const gPath = require.resolve("googleapis");
 require.cache[gPath] = { id: gPath, filename: gPath, loaded: true, exports: { google: { auth: { GoogleAuth: class {} }, sheets: () => fakeApi } } };
 const sheets = require("./sheets");
@@ -50,12 +56,19 @@ console.error = () => {};
   assert.equal(calls.batchGet, 1, "a permanent error (403) is not retried");
 
   reset("hang", "ok");
-  await assert.rejects(sheets.appendRow("T", { a: "1" }), (e) => e.code === "ETIMEDOUT");
+  await assert.rejects(sheets.appendRow("T", { k: "1" }), (e) => e.code === "ETIMEDOUT");
   assert.equal(calls.append, 1, "an append that timed out is NOT retried (the row may already exist)");
 
   reset(err("ENOTFOUND"), "ok");
-  await sheets.appendRow("T", { a: "1" });
+  await sheets.appendRow("T", { k: "1" });
   assert.equal(calls.append, 2, "an append that never left this machine IS retried");
+
+  // updateRow's guard sees the current row and can veto the write
+  assert.equal(await sheets.updateRow("T", "k", "1", { v: "x" }, (row) => row.v === "open"), true);
+  assert.deepEqual(updates, [["1", "x"]], "guard passed: written");
+  assert.equal(await sheets.updateRow("T", "k", "2", { v: "x" }, (row) => row.v === "open"), false);
+  assert.equal(updates.length, 1, "guard vetoed: nothing written");
+  assert.equal(await sheets.updateRow("T", "k", "9", { v: "x" }, () => true), false, "no such row");
 
   console.error = quiet;
   console.log("sheets tests passed");

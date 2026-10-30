@@ -110,7 +110,9 @@ async function appendRows(name, objs) {
 const appendRow = (name, obj) => appendRows(name, [obj]);
 
 // Returns true if a row matched keyColumn === keyValue and was patched, false otherwise.
-async function updateRow(name, keyColumn, keyValue, patch) {
+// `guard(currentRow)` (optional) sees the matched row as an object and can veto the write by returning false, so a caller can
+// check "still open?" and write from the same read.
+async function updateRow(name, keyColumn, keyValue, patch, guard) {
   const res = await guarded(`read ${name}`, () => client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: range(name) }));
   const [headers = [], ...rows] = res.data.values ?? [];
   const keyIdx = headers.indexOf(keyColumn);
@@ -118,6 +120,7 @@ async function updateRow(name, keyColumn, keyValue, patch) {
   assertKnownColumns(headers, patch, name);
   const idx = rows.findIndex((r) => String(r[keyIdx] ?? "") === String(keyValue));
   if (idx < 0) return false;
+  if (guard && !guard(Object.fromEntries(headers.map((h, i) => [h, rows[idx][i] ?? ""])))) return false;
   const row = headers.map((h, i) => (h in patch ? patch[h] : rows[idx][i] ?? ""));
   await guarded(`update ${name}`, () => client().spreadsheets.values.update({
     spreadsheetId: spreadsheetId(),

@@ -1,9 +1,7 @@
-// Mock Tests (Practice Test) and Final Exam, built natively from session.json `tests` (the content of the partner pages' window.TEST).
-// Progress keys are the ones the partner pages used, so Overview, rings and ticks keep working and slips already issued still verify:
-//   fl-s1-practice-done  -> true once the practice test is submitted (a low score still counts)
-//   fl-s1-real-prog      -> { name, grade, team, order:[{qi,o:[4]}], ans:[], t0 } while the Final Exam is running
-//   fl-s1-real-slip      -> { line, score, n, name, grade, team, time, ts, code } once it is submitted
-// (the "real" in those keys is the old name for the Final Exam; students only ever see "Final Exam").
+// Practice Test and Final Exam, built natively. The questions, the scoring, the explanations, the Final Exam's shuffle, clock and draft all
+// come from the server (/api/courses/F001/lab/*): the answer keys never reach the browser, and a refresh or a second browser continues the
+// same exam. This file only draws the screens and holds the answers the student has picked so far.
+// (The Final Exam was once called the "real" test; the step key "real-test" in the manifest keeps that old name, students only see "Final Exam".)
 const TestsView = (() => {
   const AUTO_ADVANCE_MS = 380;
   const OPTION_LETTERS = "ABCD";
@@ -15,21 +13,24 @@ const TestsView = (() => {
   const NAME_MAX = 40;
   const TEAM_MAX = 30;
   const GRADES = [9, 10, 11];
+  const SAVE_DEBOUNCE_MS = 2000; // draft autosave: one save after the student stops picking answers
+  const SAVE_RETRY_MS = 4000;
+  const SUBMIT_TRIES = 5;
+  const SUBMIT_RETRY_MS = 3000;
+  const MS_PER_S = 1000;
   const CONFETTI_MIN_SCORE = 8;
   const CONFETTI_COUNT = { normal: 72, great: 120 };
   const MENTOR_ROLES = ["mentor", "admin"];
   const RING_R = 52;
   const RING_C = 2 * Math.PI * RING_R;
   const PASS_PCT = { great: 0.8, ok: 0.5 };
-  // Internal slip-verification salt. Do not change.
+  // Internal slip-verification salt (the server signs slips with the same one). Do not change. Only the Mentor desk uses it in the browser.
   const SALT = "FoundersLab|MSBSS|GCEC|2026";
 
   // ---------- small helpers ----------
   const shuffle = (a) => { const r = [...a]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
   const pad2 = (n) => String(n).padStart(2, "0");
-  const taken = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / SECS_PER_MIN)}m ${pad2(s % SECS_PER_MIN)}s`; };
   const clockText = (s) => { s = Math.max(0, Math.ceil(s)); return `${pad2(Math.floor(s / SECS_PER_MIN))}:${pad2(s % SECS_PER_MIN)}`; };
-  const stamp = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   const motionOk = () => !matchMedia("(prefers-reduced-motion: reduce)").matches;
   const copyText = (text) => (navigator.clipboard?.writeText(text).then(() => toast("Copied"), () => toast("Copy failed. Select the text instead.")))
     ?? toast("Copy failed. Select the text instead.");
@@ -38,8 +39,11 @@ const TestsView = (() => {
   const fnv = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; };
   const code6 = (s) => { const h = fnv(s) ^ fnv(s.split("").reverse().join("") + "#"); return ("000000" + (h >>> 0).toString(36).toUpperCase()).slice(-6); };
 
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // The Final Exam arrives already shuffled by the server, so the runner just shows the questions in the order given.
+  const fixedOrder = (n) => Array.from({ length: n }, (_, qi) => ({ qi, o: [0, 1, 2, 3] }));
+  const dense = (st) => st.order.map((_, i) => (st.ans[i] ?? null));
   const buildOrder = (test) => shuffle(test.qs.map((_, i) => i)).map((qi) => ({ qi, o: shuffle([0, 1, 2, 3]) }));
-  const scoreOf = (test, st) => st.order.reduce((n, o, i) => n + (st.ans[i] === test.qs[o.qi].a ? 1 : 0), 0);
   const answeredOf = (st) => st.order.reduce((n, _, i) => n + (st.ans[i] != null ? 1 : 0), 0);
   const verdict = (sc, n) => {
     const p = sc / n;
@@ -224,12 +228,27 @@ const TestsView = (() => {
     document.addEventListener("keydown", onKey);
 
     draw();
-    return { destroy() { clearTimeout(advance); document.removeEventListener("keydown", onKey); ui.main.onclick = null; } };
+    return {
+      destroy() { clearTimeout(advance); document.removeEventListener("keydown", onKey); ui.main.onclick = null; },
+      // While a server call is out: no second submit. If it fails, the questions and answers stay and the student can try again.
+      lock(msg) { const b = $("[data-submit]", ui.main); if (b) { b.disabled = true; b.textContent = msg; } ui.say(msg); },
+      fail(msg) {
+        const b = $("[data-submit]", ui.main);
+        if (b) { b.disabled = false; b.textContent = "Try submitting again"; }
+        armed = false;
+        let e = $(".ts-err", ui.main);
+        if (!e) { e = document.createElement("p"); e.className = "ts-err"; e.setAttribute("role", "alert"); ui.main.firstElementChild.append(e); }
+        e.textContent = msg;
+        ui.say(msg);
+      },
+    };
   }
 
   // ---------- Practice Test ----------
-  function mountPractice(el, { session, item, test }) {
-    const n = test.qs.length;
+  // Questions come from the server without answers; the score and every explanation come back only from the submit.
+  async function mountPractice(el, { session }) {
+    const { questions, total: n } = await Founders.lab(session.id, "practice");
+    const test = { qs: questions };
     const ui = scaffold(el, { title: "Practice Test", sub: `Warm up with ${n} questions before the Final Exam.` });
     const STAGES = ["Start", "Answer", "Review"];
     let active = null;
@@ -239,7 +258,7 @@ const TestsView = (() => {
       stop();
       ui.stages({ status: "Not started", stages: STAGES, stage: 0 });
       ui.main.innerHTML = `<div class="ts-col"><h2 class="ts-h2" tabindex="-1">Practice test</h2>
-        <p class="ts-lead">${n} questions, no timer, nothing is recorded. You'll see your score with an explanation for every answer. Finishing it is one of the requirements for the Final Exam.</p>
+        <p class="ts-lead">${n} questions, no timer. You'll see your score with an explanation for every answer. Finishing it is one of the requirements for the Final Exam, and you can retake it as often as you like.</p>
         <button type="button" class="btn-pill solid ts-big" data-start>Start practice</button></div>`;
       $("[data-start]", ui.main).addEventListener("click", begin);
     }
@@ -249,28 +268,42 @@ const TestsView = (() => {
       const st = { order: buildOrder(test), ans: [] };
       ui.stages({ status: "", stages: STAGES, stage: 1 });
       ui.testPanel(n, false);
-      active = runner(ui, { test, st, onSubmit: () => finish(st) });
+      active = runner(ui, { test, st, onSubmit: () => check(st) });
       ui.focusHeading();
       ui.say(`Question 1 of ${n}`);
     }
 
-    function finish(st) {
+    async function check(st) {
+      active.lock("Checking your answers…");
+      // The server wants the answers in the questions' original order.
+      const answers = test.qs.map((_, qi) => st.ans[st.order.findIndex((o) => o.qi === qi)] ?? null);
+      let result;
+      try {
+        result = await Founders.lab(session.id, "practice", { method: "POST", body: { answers } });
+      } catch (e) {
+        return active.fail(e.message || "Couldn't check your answers. Please try again.");
+      }
+      Founders.recordPractice(session.id);
+      finish(st, result);
+    }
+
+    function finish(st, result) {
       stop();
-      const sc = scoreOf(test, st);
-      Founders.writeKey(item.storageKey, true);
+      const sc = result.score;
       const ready = Founders.summary(Hub.manifest).sessions.find((x) => x.id === session.id).gate.unlocked;
       ui.stages({ status: `Score ${sc} of ${n}`, stages: STAGES, stage: 2 });
       const review = st.order.map((o, i) => {
         const q = test.qs[o.qi];
+        const key = result.review[o.qi];
         const me = st.ans[i];
-        const ok = me === q.a;
+        const ok = me === key.a;
         return `<li class="ts-rv-i ${ok ? "ok" : "no"}"><span class="ts-mark" aria-hidden="true">${ok ? "✓" : "✕"}</span>
           <div><p class="ts-rv-q"><span class="sr-only">${ok ? "Correct. " : "Incorrect. "}</span>${i + 1}. ${esc(q.q)}</p>
             ${ok ? "" : `<p>Your answer: <s>${me == null ? "(skipped)" : esc(q.o[me])}</s></p>`}
-            <p>Correct: <b>${esc(q.o[q.a])}</b></p><p class="ts-why">${esc(q.why)}</p></div></li>`;
+            <p>Correct: <b>${esc(q.o[key.a])}</b></p><p class="ts-why">${esc(key.why)}</p></div></li>`;
       }).join("");
       ui.main.innerHTML = `<div class="ts-col">
-        <div class="ts-res">${scoreRing(sc, n)}<div><h2 class="ts-h2 big" tabindex="-1">${esc(verdict(sc, n))}</h2><p class="ts-muted">This was practice. Nothing was recorded.</p></div></div>
+        <div class="ts-res">${scoreRing(sc, n)}<div><h2 class="ts-h2 big" tabindex="-1">${esc(verdict(sc, n))}</h2><p class="ts-muted">Your practice result is saved. You can retake it as often as you like.</p></div></div>
         <section class="ts-status${ready ? " is-ready" : ""}" aria-label="Final Exam requirements"><span class="ts-tick" aria-hidden="true">${CHECK}</span>
           <p>${ready ? "You're ready. The Final Exam is unlocked." : "Practice done. Finish the rest of Resources to unlock the Final Exam"}</p>
           ${ready ? `<a class="btn-pill solid" href="${esc(Founders.hash(Hub.manifest, session.id, "real-test"))}">Go to Final Exam</a>` : ""}</section>
@@ -289,30 +322,33 @@ const TestsView = (() => {
   }
 
   // ---------- Final Exam ----------
-  function mountFinal(el, { session, test }) {
-    const n = test.qs.length;
-    const PROG = Founders.examKey(session.id, "prog");
-    const SLIP = Founders.examKey(session.id, "slip");
-    const ui = scaffold(el, { title: "Final Exam", sub: `${n} questions, ${test.minutes} minutes, one try.` });
+  // The server decides everything that matters: whether the exam is unlocked, the one attempt, the shuffle, the clock (the
+  // countdown here is only derived from the seconds it reports), the saved draft and the score. A refresh, or another browser,
+  // asks the server where the exam stands and continues from there.
+  async function mountFinal(el, { session }) {
+    let status = await Founders.lab(session.id, "exam");
+    const n = status.total ?? status.slip?.n;
+    const ui = scaffold(el, { title: "Final Exam", sub: `${n} questions${status.minutes ? `, ${status.minutes} minutes` : ""}, one try.` });
     const STAGES = ["Requirements", "Your details", "Exam", "Score slip"];
     let active = null;
     let timer = null;
-    const stop = () => { active?.destroy(); active = null; clearTimeout(timer); timer = null; };
+    let saveTimer = null;
+    let alive = true;
+    const stop = () => { active?.destroy(); active = null; clearTimeout(timer); timer = null; clearTimeout(saveTimer); saveTimer = null; };
 
     let view = ""; // what is on screen ("req", "details", ...), so live updates know what they may redraw
     let sig = "";
     const gate = () => Founders.summary(Hub.manifest).sessions.find((x) => x.id === session.id).gate;
     const reqSig = (g) => g.requirements.map((r) => `${r.have}/${r.need}`).join();
 
-    // A slip or an exam in progress always wins; otherwise the unlock rule (Founders.examGate) decides.
-    const start = () => {
-      const slip = Founders.readKey(SLIP);
-      if (slip) return showSlip(slip, true);
-      const prog = Founders.readKey(PROG);
-      if (prog?.order) return exam(prog);
-      if (gate().unlocked) return details(true);
-      requirements(true);
-    };
+    // A score slip or an exam in progress always wins; otherwise the server says whether it is unlocked.
+    function start(s = status, quiet = true) {
+      status = s;
+      if (s.state === "submitted") { Founders.recordExam(session.id, "submitted", s.slip); return showSlip(s.slip, true); }
+      if (s.state === "in_progress") { Founders.recordExam(session.id, "in_progress"); return exam(s); }
+      if (s.state === "ready") return details(quiet);
+      requirements(quiet);
+    }
 
     const rowStatus = (r) => (r.key === "practice" ? (r.done ? "Completed" : "Not taken yet")
       : r.done ? "Complete" : `${r.have} of ${r.need} ${r.key === "activities" ? "games" : "sections"} done`);
@@ -337,12 +373,17 @@ const TestsView = (() => {
       if (!quiet) ui.focusHeading();
     }
 
-    // Re-check when progress changes (another tab, a finished game, coming back to this tab).
-    function refresh() {
+    // Re-check when progress changes (another tab, a finished game, coming back to this tab). The server has the last word.
+    async function refresh() {
+      if (!alive) return;
       if (view === "req") {
         const g = gate();
-        if (g.unlocked) { ui.say("All requirements complete. Enter your details to start the exam."); return details(true); }
-        if (reqSig(g) !== sig) { requirements(true); ui.say(`${g.have} of ${g.need} parts done`); }
+        if (g.unlocked) {
+          try {
+            const s = await Founders.lab(session.id, "exam");
+            if (alive && view === "req" && s.state !== "locked") { ui.say("All requirements complete. Enter your details to start the exam."); return start(s); }
+          } catch { /* stay on the requirements page */ }
+        } else if (reqSig(g) !== sig) { requirements(true); ui.say(`${g.have} of ${g.need} parts done`); }
       } else if (view === "details" && gate().locked) requirements(true);
     }
 
@@ -360,15 +401,16 @@ const TestsView = (() => {
           <div class="ts-fld"><label for="ts-team">Team name</label><input id="ts-team" maxlength="${TEAM_MAX}" autocomplete="off" aria-describedby="ts-err"></div>
         </div>
         <ul class="ts-rules">
-          <li><b>${test.minutes} minutes</b><span>The timer starts when you tap Start and keeps running if you refresh.</span></li>
+          <li><b>${status.minutes} minutes</b><span>The timer starts when you tap Start and keeps running if you refresh or switch device.</span></li>
           <li><b>Shuffled order</b><span>Your order is shuffled, so it differs from your neighbour's.</span></li>
           <li><b>One try</b><span>You can submit once. You will see only your score.</span></li>
         </ul>
         <button type="submit" class="btn-pill solid ts-big">Start the exam</button>
         <p class="ts-err" id="ts-err" role="alert"></p></form>`;
-      $("form", ui.main).addEventListener("submit", (e) => {
+      $("form", ui.main).addEventListener("submit", async (e) => {
         e.preventDefault();
         const nameEl = $("#ts-name", ui.main), gradeEl = $("#ts-grade", ui.main), teamEl = $("#ts-team", ui.main);
+        const errEl = $("#ts-err", ui.main), btn = $("button[type=submit]", ui.main);
         // "|" separates the slip fields, so it can never appear inside one.
         const name = nameEl.value.trim().replace(/\|/g, "/");
         const grade = gradeEl.value;
@@ -377,46 +419,83 @@ const TestsView = (() => {
         [nameEl, gradeEl, teamEl].forEach((x) => x.removeAttribute("aria-invalid"));
         if (bad.length) {
           bad.forEach(([, x]) => x.setAttribute("aria-invalid", "true"));
-          $("#ts-err", ui.main).textContent = "Please fill in your full name, grade and team.";
+          errEl.textContent = "Please fill in your full name, grade and team.";
           return bad[0][1].focus();
         }
-        const st = { name, grade, team, order: buildOrder(test), ans: [], t0: Date.now() };
-        Founders.writeKey(PROG, st);
-        exam(st);
+        btn.disabled = true;
+        errEl.textContent = "";
+        try {
+          const body = await Founders.lab(session.id, "exam/start", { method: "POST", body: { name, grade, team } });
+          Founders.recordExam(session.id, "in_progress");
+          exam(body);
+        } catch (err) {
+          btn.disabled = false;
+          // Already started or taken (another tab, or a double tap): show where the exam really stands.
+          if (err.status === 409) { try { return start(await Founders.lab(session.id, "exam")); } catch { /* fall through to the message */ } }
+          errEl.textContent = err.message || "Couldn't start the exam. Please try again.";
+        }
       });
       if (!quiet) ui.focusHeading();
     }
 
-    function exam(st) {
+    function exam(body) {
       stop();
       view = "exam";
-      const limit = test.minutes * SECS_PER_MIN;
-      let done = false;
+      const endsAt = Date.now() + body.remaining * MS_PER_S; // the server's remaining seconds, turned into a local deadline
+      const test = { qs: body.questions };
+      const st = { order: fixedOrder(test.qs.length), ans: body.answers.slice() };
+      let finishing = false;
+      let saving = false;
       const said = new Set();
-      ui.who(`${st.name} · Grade ${st.grade} · ${st.team}`);
+      ui.who(`${body.name} · Grade ${body.grade} · ${body.team}`);
       ui.stages({ status: "", stages: STAGES, stage: 2 });
       ui.testPanel(n, true);
 
-      const left = () => limit - (Date.now() - st.t0) / 1000;
-      const submit = () => {
-        if (done) return;
-        done = true;
-        stop();
-        const sc = scoreOf(test, st);
-        const secs = Math.min(limit, Math.round((Date.now() - st.t0) / 1000));
-        const parts = [`FL-${session.id.toUpperCase()}`, st.name, `Gr ${st.grade}`, st.team, `${sc}/${st.order.length}`, taken(secs), stamp(new Date())];
-        const code = code6(parts.join("|") + "|" + SALT);
-        parts.push(code);
-        const slip = { line: parts.join(" | "), score: sc, n: st.order.length, name: st.name, grade: st.grade, team: st.team, time: taken(secs), ts: parts[6], code };
-        try { localStorage.removeItem(PROG); } catch { /* private mode */ }
-        Founders.writeKey(SLIP, slip);
-        showSlip(slip, false);
-      };
-      active = runner(ui, { test, st, onSave: () => Founders.writeKey(PROG, st), onSubmit: submit });
+      const left = () => (endsAt - Date.now()) / MS_PER_S;
+
+      // Draft autosave: shortly after the last pick, the answers so far go to the server.
+      async function saveDraft() {
+        if (finishing || saving) return;
+        saving = true;
+        try {
+          await Founders.lab(session.id, "exam/save", { method: "POST", body: { answers: dense(st) } });
+        } catch (err) {
+          saving = false;
+          if (err.status === 409) return submit(); // the server says the exam is closed: collect the result
+          saveTimer = setTimeout(saveDraft, SAVE_RETRY_MS);
+          return;
+        }
+        saving = false;
+      }
+      const queueSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, SAVE_DEBOUNCE_MS); };
+
+      async function submit() {
+        if (finishing) return;
+        finishing = true;
+        clearTimeout(timer); clearTimeout(saveTimer);
+        active?.destroy(); active = null;
+        ui.main.innerHTML = '<div class="ts-col"><h2 class="ts-h2" tabindex="-1">Submitting your exam…</h2><p class="ts-muted" role="status">Please keep this page open.</p></div>';
+        ui.say("Submitting your exam");
+        for (let attempt = 1; ; attempt++) {
+          try {
+            const r = await Founders.lab(session.id, "exam/submit", { method: "POST", body: { answers: dense(st) } });
+            Founders.recordExam(session.id, "submitted", r.slip);
+            return alive && showSlip(r.slip, false);
+          } catch (err) {
+            if (!alive) return;
+            if (attempt < SUBMIT_TRIES) { await sleep(SUBMIT_RETRY_MS); continue; }
+            // Nothing is lost: the draft is on the server and the exam closes by itself at the deadline.
+            ui.main.replaceChildren(errorBox(`${err.message || "We couldn't reach the server."} Your answers are saved. Try again.`, () => { finishing = false; submit(); }));
+            return;
+          }
+        }
+      }
+
+      active = runner(ui, { test, st, onSave: queueSave, onSubmit: submit });
       ui.focusHeading();
 
       (function tick() {
-        if (done) return;
+        if (finishing) return;
         const t = left();
         const level = ui.setClock(t);
         if (level === "crit" && !said.has("crit")) { said.add("crit").add("warn"); ui.say("30 seconds left"); }
@@ -444,10 +523,10 @@ const TestsView = (() => {
       if (!again) celebrate(s.score, s.n);
     }
 
-    start();
+    start(status);
     ui.settle();
     const unwatch = Founders.watch(refresh);
-    return () => { unwatch(); stop(); };
+    return () => { alive = false; unwatch(); stop(); };
   }
 
   // ---------- Mentor desk (#final/mentor-desk) ----------
@@ -509,16 +588,17 @@ const TEST_ITEM_VIEW = { mock: "practice", final: "final" };
 
 async function mountTestPanel(kind, el, hub) {
   const parts = hashParts().slice(1);
-  const session = hub.manifest?.sessions.find((s) => s.id === parts[0]) ?? hub.manifest?.sessions[0];
-  const item = session?.items.find((it) => it.view === TEST_ITEM_VIEW[kind]);
-  if (!session?.data || !item) return testsFallback[kind](el, hub);
-  const data = await Resources.loadData(session);
-  const test = data.tests?.[item.view === "practice" ? "practice" : "final"];
-  if (!test) return testsFallback[kind](el, hub);
-  const ctx = { session, item, test };
-  if (kind === "mock") return TestsView.mountPractice(el, ctx);
-  if (parts[0] === "mentor-desk" && TestsView.canUseDesk(hub.user)) return TestsView.mountDesk(el, ctx);
-  return TestsView.mountFinal(el, ctx);
+  if (!hub.manifest) return testsFallback[kind](el, hub);
+  if (kind === "final" && parts[0] === "mentor-desk" && TestsView.canUseDesk(hub.user)) return TestsView.mountDesk(el, { session: hub.manifest.sessions[0] });
+  const session = parts[0] ? hub.manifest.sessions.find((x) => x.id === parts[0]) : hub.manifest.sessions[0];
+  if (!session) return notAvailableYet(el); // an unknown or not-yet-released module
+  if (!session.items.some((it) => it.view === TEST_ITEM_VIEW[kind])) return testsFallback[kind](el, hub);
+  try {
+    return await (kind === "mock" ? TestsView.mountPractice : TestsView.mountFinal)(el, { session });
+  } catch (e) {
+    if (e.status === 404) return notAvailableYet(el); // the server doesn't know this module yet
+    throw e; // the router shows the error box with Retry
+  }
 }
 Panels.mock = (el, hub) => mountTestPanel("mock", el, hub);
 Panels.final = (el, hub) => mountTestPanel("final", el, hub);

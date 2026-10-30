@@ -131,6 +131,7 @@ function cleanAnswers(raw, length) {
   });
 }
 
+const submittedBody = (row, session) => ({ state: "submitted", slip: slipOf(row), total: Number(row.total), minutes: session.tests.final.minutes });
 const slipOf = (row) => ({ line: row.slipLine, score: Number(row.score), n: Number(row.total), name: row.name, grade: row.grade, team: row.team, time: taken(Number(row.seconds)), ts: row.slipTs, code: row.slipCode });
 const inProgressBody = (row, session, remaining) => ({
   state: "in_progress", name: row.name, grade: row.grade, team: row.team, total: Number(row.total), minutes: session.tests.final.minutes,
@@ -166,9 +167,9 @@ async function examState(t, sid, session) {
     const gate = gateOf(t, sid, session);
     return gate.unlocked ? { state: "ready", total, minutes } : { state: "locked", total, minutes, parts: gate.parts };
   }
-  if (row.submittedAt) return { state: "submitted", slip: slipOf(row) };
+  if (row.submittedAt) return submittedBody(row, session);
   const secs = elapsedSeconds(row);
-  if (secs > limitSeconds(session) + GRACE_SECONDS) return { state: "submitted", slip: slipOf(await finalize(sid, session, draftOf(row, Number(row.total)), true)) };
+  if (secs > limitSeconds(session) + GRACE_SECONDS) return submittedBody(await finalize(sid, session, draftOf(row, Number(row.total)), true), session);
   return inProgressBody(row, session, limitSeconds(session) - secs);
 }
 
@@ -304,11 +305,11 @@ module.exports = function labRouter({ requireLogin }) {
     const t = await load(req, [ATTEMPTS_TAB]);
     const row = t.LabExamAttempts.find((a) => a.attemptKey === attemptKey(sid, session.id));
     if (!row) throw httpError(409, "This exam has not started.");
-    if (row.submittedAt) return res.json({ state: "submitted", slip: slipOf(row) });
+    if (row.submittedAt) return res.json(submittedBody(row, session));
     const n = Number(row.total);
     const late = elapsedSeconds(row) > limitSeconds(session) + GRACE_SECONDS;
     const answers = late ? draftOf(row, n) : cleanAnswers(req.body?.answers, n);
-    res.json({ state: "submitted", slip: slipOf(await finalize(sid, session, answers, late)) });
+    res.json(submittedBody(await finalize(sid, session, answers, late), session));
   }));
 
   return r;
