@@ -5,7 +5,7 @@ const SITE = {
   hero: {
     pill: "Study Hub",
     org: "IICFE Singapore",
-    title: "Shaping the\nfuture of\n{{Commerce,}}\n[[Finance &]]\nEntrepreneurship.",
+    title: "Your pathway to\n[[global]]\n[[designations]]\nstarts here",
     primary: { label: "Explore Courses", href: "courses.html", icon: "globe" },
   },
   stats: [
