@@ -1,15 +1,16 @@
-// Theme preference: "light" | "dark" | "system" (default), stored in localStorage as "iicfe-theme".
+// Theme preference: "light" (default) | "dark" | "system", stored in localStorage as "iicfe-theme".
 // The inline script in every page's <head> sets data-theme before first paint; this file keeps it in sync afterwards
 // (live OS changes, other tabs, the sidebar toggle and the Settings page).
 const Theme = (() => {
   const KEY = "iicfe-theme";
   const MODES = ["light", "dark", "system"];
+  const DEFAULT_MODE = "light"; // must match the inline script in every page's <head>
   const FADE_MS = 150;
   const media = matchMedia("(prefers-color-scheme: dark)");
   const listeners = new Set();
 
   const preference = () => {
-    try { const v = localStorage.getItem(KEY); return MODES.includes(v) ? v : "system"; } catch { return "system"; }
+    try { const v = localStorage.getItem(KEY); return MODES.includes(v) ? v : DEFAULT_MODE; } catch { return DEFAULT_MODE; }
   };
   const systemTheme = () => (media.matches ? "dark" : "light");
   const resolved = (pref = preference()) => (pref === "system" ? systemTheme() : pref);
