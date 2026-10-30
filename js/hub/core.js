@@ -31,7 +31,6 @@ const NEEDS_PROGRESS = new Set(["resources", "mock", "final", "certificate"]);
 
 // TODO(portal): temporary stand-ins, replaced as each portal page is built. Sessions links to Session 1's existing pages meanwhile.
 const STAND_IN = {
-  journey: ["My Journey", "Your startup journey, mapped."],
   toolkit: ["Toolkit", "Six guides. One founder's journey."],
   sessions: ["Sessions", "Your session plan."],
 };

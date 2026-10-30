@@ -28,10 +28,12 @@ function stagesWithStatus(checked) {
 
 /**
  * Everything the Overview, My Journey and the sidebar widget draw.
- * `rows`: this student's checklist rows ({ itemId, checked, answer, checkedDate }); `approvedProofs`: ids of upload items a reviewer approved.
- * Upload items count ONLY when approved: a tick written into the sheet by hand never counts.
+ * `rows`: this student's checklist rows ({ itemId, checked, answer, checkedDate });
+ * `proofs`: itemId -> the latest submission view for each upload item (see submissions.js).
+ * An upload item is done when it has a submission that a reviewer has not sent back (a link counts as soon as it is submitted);
+ * a tick written into the sheet by hand never counts.
  */
-function buildJourney(rows, approvedProofs = new Set()) {
+function buildJourney(rows, proofs = {}) {
   const checked = {};
   const answers = {};
   const dates = {};
@@ -41,7 +43,7 @@ function buildJourney(rows, approvedProofs = new Set()) {
     if (r.answer) answers[r.itemId] = r.answer;
     if (r.checkedDate) dates[r.itemId] = r.checkedDate;
   }
-  for (const [id, item] of ALL_ITEMS) if (item.kind === "upload") checked[id] = approvedProofs.has(id);
+  for (const [id, item] of ALL_ITEMS) if (item.kind === "upload") checked[id] = !!proofs[id] && proofs[id].status !== "changes_requested";
 
   const stages = stagesWithStatus(checked);
   const doneStages = stages.filter((s) => s.status === "done").length;
@@ -56,7 +58,7 @@ function buildJourney(rows, approvedProofs = new Set()) {
   return {
     stages: stages.map((s) => ({
       id: s.id, n: s.n, label: s.label, status: s.status, completion: s.completion,
-      deliverables: s.deliverables.map((d) => ({ ...d, checked: !!checked[d.id], answer: answers[d.id] ?? "" })),
+      deliverables: s.deliverables.map((d) => ({ ...d, checked: !!checked[d.id], answer: answers[d.id] ?? "", ...(d.kind === "upload" && { proof: proofs[d.id] ?? null }) })),
     })),
     doneStages,
     totalStages: stages.length,

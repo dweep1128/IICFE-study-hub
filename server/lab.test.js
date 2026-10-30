@@ -24,6 +24,9 @@ const tabs = {
   LabProgress: [],
   LabExamAttempts: [],
   LabChecklist: [],
+  LabSubmissions: [],
+  LabCompetitions: [],
+  LabCompetitionEntries: [],
 };
 let sheetDown = false;
 const down = () => { if (sheetDown) throw Object.assign(new Error("simulated Google outage"), { code: "ETIMEDOUT" }); };
@@ -249,6 +252,72 @@ async function unlock(cookie) {
   const forged = (await J(a)).json;
   assert.equal(forged.stages[1].deliverables.find((d) => d.id === "solution-concept").checked, false, "uploads count only when a reviewer approved them");
   assert.ok(!forged.activity.some((x) => /sketch/i.test(x.title)), "and are not listed as activity");
+  tabs.LabChecklist.pop(); // remove the forged row again
+
+  // ---- submissions: a pasted https link, counted at once, status kept for a later review page ----
+  const submit = (body, cookie) => post(`${LAB}/submissions`, body, cookie);
+  const GOOD = "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view";
+  for (const bad of ["", "   ", "http://example.com/a.pdf", "javascript:alert(1)", "ftp://example.com/a", "https://localhost/a", "https://user:pw@example.com/a", "not a link", `https://example.com/${"a".repeat(600)}`]) {
+    assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: bad }, a)).status, 400, `refused: ${bad.slice(0, 40)}`);
+  }
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "nope", url: GOOD }, a)).status, 400, "unknown item");
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "founder-profile", url: GOOD }, a)).status, 400, "only upload items take a link");
+  assert.equal((await submit({ uploadType: "bogus", itemId: "solution-concept", url: GOOD }, a)).status, 400);
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "interview-log", url: GOOD }, a)).status, 409, "a locked stage takes no submissions");
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, outsider)).status, 404);
+  assert.equal(tabs.LabSubmissions.length, 0, "refused submissions leave nothing behind");
+
+  const before = (await J(a)).json.stages[1].completion.doneCount;
+  const sub = await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: `  ${GOOD}  ` }, a);
+  assert.equal(sub.status, 200);
+  assert.equal(sub.json.submission.status, "submitted");
+  assert.equal(sub.json.submission.version, 1);
+  assert.equal(sub.json.submission.url, GOOD);
+  assert.equal(sub.json.submission.fileName, "drive.google.com", "an id-only link is named by its host");
+  assert.equal(sub.json.journey.stages[1].completion.doneCount, before + 1, "a submitted link counts immediately");
+  assert.equal(sub.json.journey.stages[1].deliverables.find((d) => d.id === "solution-concept").proof.status, "submitted");
+  assert.equal(tabs.LabSubmissions[0].studentId, "S001");
+  assert.equal(tabs.LabSubmissions[0].status, "submitted");
+
+  // a resubmission is a new row (version 2); changes_requested takes the credit back; approved is final
+  const again = await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: "https://example.com/files/Sketch%20v2.pdf" }, a);
+  assert.equal(again.json.submission.version, 2);
+  assert.equal(again.json.submission.fileName, "Sketch v2.pdf", "a readable name comes from the link");
+  assert.equal(tabs.LabSubmissions.length, 2, "history is kept");
+  tabs.LabSubmissions[1].status = "changes_requested";
+  tabs.LabSubmissions[1].reviewNote = "Add a label to each part.";
+  const sentBack = (await J(a)).json.stages[1].deliverables.find((d) => d.id === "solution-concept");
+  assert.equal(sentBack.checked, false, "a reviewer's changes_requested takes the item back");
+  assert.equal(sentBack.proof.reviewNote, "Add a label to each part.");
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, a)).json.submission.version, 3);
+  tabs.LabSubmissions[2].status = "approved";
+  assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, a)).status, 409, "approved items can't be replaced");
+  assert.equal((await J(b)).json.stages[1].deliverables.find((d) => d.id === "solution-concept").proof, null, "students never see each other's submissions");
+
+  // ---- competitions: team-kept catalogue, the student's own status and star ----
+  tabs.LabCompetitions.push(
+    { compId: "C1", name: "Pitch Cup", org: "Org A", about: "Pitch.", eligibility: "Grades 9-12", eventDate: "2999-02-01", deadline: "2999-01-01", prize: "₹10,000", url: "https://example.com/cup", active: "TRUE" },
+    { compId: "C2", name: "Hidden", org: "", about: "", eligibility: "", eventDate: "", deadline: "2999-01-01", prize: "", url: "", active: "FALSE" },
+    { compId: "C3", name: "Old Contest", org: "", about: "", eligibility: "", eventDate: "2000-02-01", deadline: "2000-01-01", prize: "", url: "javascript:alert(1)", active: "TRUE" },
+  );
+  const comps = (cookie) => get(`${LAB}/competitions`, cookie);
+  const list0 = (await comps(a)).json.competitions;
+  assert.deepEqual(list0.map((c) => [c.id, c.status, c.saved]), [["C3", "closed", false], ["C1", "open", false]], "active only, soonest deadline first, past deadline = closed");
+  assert.equal(list0[0].url, "", "an unsafe link is never sent");
+  assert.equal((await comps(outsider)).status, 404);
+  assert.equal((await post(`${LAB}/competitions`, { compId: "C2", saved: true }, a)).status, 404, "an unpublished competition can't be touched");
+  assert.equal((await post(`${LAB}/competitions`, { compId: "nope", saved: true }, a)).status, 404);
+  assert.equal((await post(`${LAB}/competitions`, { compId: "C1", status: "won" }, a)).status, 400);
+  assert.equal((await post(`${LAB}/competitions`, { compId: "C1", saved: "yes" }, a)).status, 400);
+  assert.equal((await post(`${LAB}/competitions`, { compId: "C1" }, a)).status, 400, "nothing to update");
+  const star = await post(`${LAB}/competitions`, { compId: "C1", saved: true }, a);
+  assert.equal(star.json.competitions.find((c) => c.id === "C1").saved, true);
+  assert.equal(star.json.competitions.find((c) => c.id === "C1").status, "open", "starring does not change the status");
+  const applied = await post(`${LAB}/competitions`, { compId: "C1", status: "applied" }, a);
+  assert.equal(applied.json.competitions.find((c) => c.id === "C1").status, "applied");
+  assert.equal(applied.json.competitions.find((c) => c.id === "C1").saved, true, "the star survives a status change");
+  assert.equal(tabs.LabCompetitionEntries.length, 1, "one row per student and competition");
+  assert.equal((await comps(b)).json.competitions.find((c) => c.id === "C1").status, "open", "another student's status is separate");
 
   // students only ever see their own journey
   assert.equal((await J(b)).json.percent, 0);
@@ -260,7 +329,7 @@ async function unlock(cookie) {
   sheetDown = true;
   const quiet = console.error;
   console.error = () => {};
-  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/journey`], ["POST", `${LAB}/journey/check`, { itemId: "landing-test", checked: false }], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, DETAILS], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
+  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/journey`], ["GET", `${LAB}/competitions`], ["POST", `${LAB}/submissions`, { uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }], ["POST", `${LAB}/journey/check`, { itemId: "landing-test", checked: false }], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, DETAILS], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
     const res = await send(m, p, body, a);
     assert.equal(res.status, 503, `${m} ${p} during an outage`);
     assert.match(res.json.error, /temporarily unavailable/i);

@@ -14,13 +14,20 @@ const sheets = require("./sheets");
 const tests = require("./founders-lab-tests.json");
 const manifest = require("../content/founders-lab/manifest.json");
 const { buildJourney, ALL_ITEMS } = require("./journey");
+const submissions = require("./submissions");
+const competitions = require("./competitions");
 const { isId, httpError, parseJson } = require("./util");
 
 const COURSE_ID = manifest.courseId;
 const PROGRESS_TAB = "LabProgress";
 const ATTEMPTS_TAB = "LabExamAttempts";
 const CHECKLIST_TAB = "LabChecklist";
+const SUBMISSIONS_TAB = "LabSubmissions";
+const COMPETITIONS_TAB = "LabCompetitions";
+const ENTRIES_TAB = "LabCompetitionEntries";
+const JOURNEY_TABS = [CHECKLIST_TAB, SUBMISSIONS_TAB];
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const MAX_ID_LENGTH = 400;
 const CLIENT_PARTS = ["notes", "activities"]; // practice and the exam are written by this server only
 const OPTIONS = 4;
 const SECS_PER_MIN = 60;
@@ -108,7 +115,14 @@ const saveState = (sid, sessionId, part, state) => upsert(PROGRESS_TAB, "progres
   studentId: sid, courseId: COURSE_ID, sessionId, part, stateJson: JSON.stringify(state), updatedAt: new Date().toISOString(),
 });
 
-const journeyOf = (t, sid) => buildJourney(t.LabChecklist.filter((r) => r.studentId === sid));
+// The latest checkpoint submission per journey item (itemId -> submission view).
+function proofsOf(t, sid) {
+  const mine = t.LabSubmissions.filter((r) => r.studentId === sid && r.uploadType === "checkpoint");
+  const out = {};
+  for (const row of submissions.latestByItem(mine).values()) out[row.itemId] = submissions.toView(row);
+  return out;
+}
+const journeyOf = (t, sid) => buildJourney(t.LabChecklist.filter((r) => r.studentId === sid), proofsOf(t, sid));
 
 // ---------- the unlock rule (the server's copy: the browser's is only for display) ----------
 function gateOf(t, sid, session) {
@@ -211,7 +225,7 @@ module.exports = function labRouter({ requireLogin }) {
 
   // ----- journey (the 7 stages, ticks and written answers) -----
   r.get("/journey", route(async (req, res) => {
-    const t = await load(req, [CHECKLIST_TAB]);
+    const t = await load(req, JOURNEY_TABS);
     res.json(journeyOf(t, req.user.studentId));
   }));
 
@@ -228,7 +242,7 @@ module.exports = function labRouter({ requireLogin }) {
     const text = isText ? answer.trim() : "";
     if (isText && text.length > (item.maxLength ?? 0)) throw httpError(400, `Keep your answer under ${item.maxLength} characters.`);
 
-    const t = await load(req, [CHECKLIST_TAB]);
+    const t = await load(req, JOURNEY_TABS);
     // Ticking ahead is refused: items in a locked stage are a preview only. Unticking is always allowed.
     if (isText ? text !== "" : checked === true) {
       const stage = journeyOf(t, sid).stages.find((s) => s.id === item.stageId);
@@ -238,7 +252,69 @@ module.exports = function labRouter({ requireLogin }) {
     await upsert(CHECKLIST_TAB, "checkKey", checkKey(sid, item.id), {
       studentId: sid, itemId: item.id, checked: on ? "TRUE" : "FALSE", checkedDate: todayIST(), ...(isText && { answer: text }),
     });
-    res.json({ ok: true, journey: journeyOf(await load(req, [CHECKLIST_TAB]), sid) });
+    res.json({ ok: true, journey: journeyOf(await load(req, JOURNEY_TABS), sid) });
+  }));
+
+  // ----- submissions (a pasted https link for now; see submissions.js) -----
+  // Body: { uploadType, itemId, url }. The item, its label and its rules are looked up here, never taken from the browser.
+  function resolveItem(t, sid, type, itemId) {
+    if (type === "checkpoint") {
+      const item = ALL_ITEMS.get(itemId);
+      if (!item || item.kind !== "upload") throw httpError(400, "Unknown item.");
+      // Same rule as ticking: a locked stage is a preview only.
+      if (journeyOf(t, sid).stages.find((x) => x.id === item.stageId).status === "locked") throw httpError(409, "Finish the compulsory items in the earlier stage first.");
+      return { label: item.label };
+    }
+    throw httpError(400, "Unknown item."); // required documents and session upload slots are added with their pages
+  }
+
+  r.post("/submissions", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const { uploadType, itemId, url } = req.body ?? {};
+    if (!submissions.UPLOAD_TYPES.includes(uploadType) || typeof itemId !== "string" || itemId.length > MAX_ID_LENGTH) throw httpError(400, "Invalid request.");
+    const link = submissions.checkLink(url);
+    if (link.error) throw httpError(400, link.error);
+
+    const key = `${sid}|${uploadType}|${itemId}`;
+    const submission = await withLock(`submission|${key}`, async () => {
+      const t = await load(req, JOURNEY_TABS); // fresh read right before the insert
+      const item = resolveItem(t, sid, uploadType, itemId);
+      const mine = t.LabSubmissions.filter((x) => x.studentId === sid && x.uploadType === uploadType && x.itemId === itemId);
+      const latest = [...submissions.latestByItem(mine).values()][0];
+      if (latest && submissions.statusOf(latest) === "approved") throw httpError(409, "This item is already approved.");
+      const version = (latest ? Number(latest.version) : 0) + 1;
+      const row = {
+        subId: `${key}|v${version}`, studentId: sid, courseId: COURSE_ID, uploadType, itemId, itemLabel: item.label, sessionNo: "",
+        url: link.url, fileName: submissions.nameFromLink(link.url), version, status: "submitted", reviewNote: "", reviewer: "", submittedAt: new Date().toISOString(), reviewedAt: "",
+      };
+      await sheets.appendRow(SUBMISSIONS_TAB, row);
+      return submissions.toView(row);
+    });
+    res.json({ ok: true, submission, journey: journeyOf(await load(req, JOURNEY_TABS), sid) });
+  }));
+
+  // ----- competitions -----
+  const competitionsFor = (t, sid) => competitions.listFor(t.LabCompetitions, t.LabCompetitionEntries.filter((e) => e.studentId === sid), todayIST());
+
+  r.get("/competitions", route(async (req, res) => {
+    const t = await load(req, [COMPETITIONS_TAB, ENTRIES_TAB]);
+    res.json({ competitions: competitionsFor(t, req.user.studentId) });
+  }));
+
+  // Body: { compId, status?, saved? }
+  r.post("/competitions", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const { compId, status, saved } = req.body ?? {};
+    if (typeof compId !== "string") throw httpError(400, "Invalid request.");
+    if (status !== undefined && !competitions.STATUSES.includes(status)) throw httpError(400, "Invalid status.");
+    if (saved !== undefined && typeof saved !== "boolean") throw httpError(400, "Invalid request.");
+    if (status === undefined && saved === undefined) throw httpError(400, "Nothing to update.");
+    const t = await load(req, [COMPETITIONS_TAB, ENTRIES_TAB]);
+    if (!competitionsFor(t, sid).some((c) => c.id === compId)) throw httpError(404, "Competition not found.");
+    await upsert(ENTRIES_TAB, "entryKey", `${sid}|${compId}`, {
+      studentId: sid, compId, updatedAt: todayIST(), ...(status && { status }), ...(saved !== undefined && { saved: saved ? "TRUE" : "FALSE" }),
+    });
+    res.json({ ok: true, competitions: competitionsFor(await load(req, [COMPETITIONS_TAB, ENTRIES_TAB]), sid) });
   }));
 
   // ----- progress -----

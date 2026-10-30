@@ -24,10 +24,16 @@ module.exports = {
     // Founder's Lab. Created once by `npm run setup-lab`, never during a page request.
     // One row per student and journey item: the tick and (for written items) the answer.
     LabChecklist: ["checkKey", "studentId", "itemId", "checked", "answer", "checkedDate"],
+    // One row per submission (a pasted https link for now). Every row has a status (submitted / approved / changes_requested) and reviewer fields,
+    // so a mentor review page can be added later without changing the data. A resubmission is a new row with version + 1.
+    LabSubmissions: ["subId", "studentId", "courseId", "uploadType", "itemId", "itemLabel", "sessionNo", "url", "fileName", "version", "status", "reviewNote", "reviewer", "submittedAt", "reviewedAt"],
+    // Competitions: the catalogue is kept by the programme team (active = TRUE publishes a row); entries are the student's own status and star.
+    LabCompetitions: ["compId", "name", "org", "about", "eligibility", "eventDate", "deadline", "prize", "url", "active"],
+    LabCompetitionEntries: ["entryKey", "studentId", "compId", "status", "saved", "updatedAt"],
     // One row per student, session and part (notes, activities, practice).
     LabProgress: ["progressKey", "studentId", "courseId", "sessionId", "part", "stateJson", "updatedAt"],
     // One row per student and session: the Final Exam attempt (server clock, shuffle, draft, result and score slip).
     LabExamAttempts: ["attemptKey", "studentId", "courseId", "sessionId", "name", "grade", "team", "startedAt", "orderJson", "draftJson", "submittedAt", "score", "total", "seconds", "slipLine", "slipCode", "slipTs"],
   },
-  LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist"],
+  LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist", "LabSubmissions", "LabCompetitions", "LabCompetitionEntries"],
 };
