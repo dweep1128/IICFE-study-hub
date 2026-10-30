@@ -60,10 +60,8 @@ function founderLabel(fl) {
   const s = fl.sessions.find((x) => x.started);
   return s ? `Session ${s.no} in progress` : "Not started";
 }
-const courseHref = (c) => {
-  const next = c.fl?.next;
-  return next ? Founders.href(manifest, next.session.id, next.item.key) : `course.html?id=${encodeURIComponent(c.courseId)}`;
-};
+// Always the Overview tab; the course page itself deep-links to the next step from there.
+const courseHref = (c) => `course.html?id=${encodeURIComponent(c.courseId)}#overview`;
 
 const workspaceCourseCard = (c, done = false) => `
   <article class="hub-card course-card">
@@ -74,7 +72,7 @@ const workspaceCourseCard = (c, done = false) => `
     </div>
     ${!done && c.fl?.next?.hint ? `<p class="cc-hint">${esc(c.fl.next.hint)}</p>` : ""}
     ${!done && c.nextDue ? `<p class="cc-due">${CAL}<span>Next due: <b>${esc(c.nextDue.title)}</b> · ${esc(fmtDate(c.nextDue.dueDate))}</span></p>` : ""}
-    <div class="cc-foot"><a class="btn-pill solid" href="${esc(done ? `course.html?id=${encodeURIComponent(c.courseId)}` : courseHref(c))}" aria-label="${done ? "View course" : "Continue learning"}: ${esc(c.title)}">${done ? "View course" : "Continue learning"} <span class="arrow" aria-hidden="true">→</span></a></div>
+    <div class="cc-foot"><a class="btn-pill solid" href="${esc(courseHref(c))}" aria-label="${done ? "View course" : "Continue learning"}: ${esc(c.title)}">${done ? "View course" : "Continue learning"} <span class="arrow" aria-hidden="true">→</span></a></div>
   </article>`;
 
 const courseTab = (id, label, n, selected) =>
