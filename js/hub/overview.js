@@ -1,6 +1,7 @@
 // Overview + the "Coming soon" tabs. Sessions from content/founders-lab/manifest.json are the course's modules.
 const CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
-const DESC_CLAMP_LINES = 3;
+const DESC_CLAMP_LINES = 2;
+const SHORT_STEPPER_MAX = 4; // up to this many steps stay on one row at medium widths (see css/hub.css)
 const stepLink = (hub, session, item) => Founders.hash(hub.manifest, session.id, item.key);
 
 // Status line under a step in the journey list: a real score once the Final Exam is submitted.
@@ -24,10 +25,9 @@ function overviewHtml(hub, d, sum) {
     <section class="ov-grid">
       <article class="hub-card" aria-labelledby="jt">
         <p class="mono-label" id="jt">Your journey</p>
-        <div class="journey-top"><p><strong>${sum.sessionsDone}</strong> of ${sum.sessionsTotal} sessions complete</p></div>
         <div class="journey-cur"><div><h3>Session ${session.no}: ${esc(session.title)}</h3><p>${session.doneCount} of ${session.total} steps complete</p></div>
           <a class="btn-pill" href="${esc(nextHref)}">Open module <span class="arrow" aria-hidden="true">→</span></a></div>
-        <ol class="stepper" style="--cols:${session.items.length}" aria-label="Session ${session.no} steps">${session.items.map((it, i) => {
+        <ol class="stepper" style="--cols:${session.items.length}"${session.items.length <= SHORT_STEPPER_MAX ? " data-short" : ""} aria-label="Session ${session.no} steps">${session.items.map((it, i) => {
           const cls = it.done ? "complete" : it.key === nextItemKey && session === next?.session ? "in_progress" : "upcoming";
           return `<li class="${cls}">
             <span class="step-dot">${it.done ? CHECK : i + 1}</span>
@@ -41,7 +41,6 @@ function overviewHtml(hub, d, sum) {
         <p class="mono-label" id="na">Next action</p>
         ${next ? `
           <h2>${esc(next.item.label)}</h2>
-          <p class="meta">Session ${next.session.no} · ${esc(next.session.title)}</p>
           ${next.hint ? `<p class="meta">${esc(next.hint)}</p>` : ""}
           <div class="next-foot"><span></span><a class="round-btn" href="${esc(nextHref)}" aria-label="Go to ${esc(next.item.label)}"><span aria-hidden="true">→</span></a></div>`
         : '<h2>All caught up</h2><p class="empty-note">Every session is complete.</p>'}

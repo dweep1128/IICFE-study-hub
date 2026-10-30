@@ -1,6 +1,6 @@
 /* Course hub content only (course.html). Shell, greeting, cards, pills, tables and skeletons live in app.css. */
 /* ---------- overview ---------- */
-.ov-grid { display: grid; gap: 24px; grid-template-columns: 1fr; align-items: start; margin-bottom: 40px; }
+.ov-grid { display: grid; gap: 32px; grid-template-columns: 1fr; align-items: start; margin-bottom: 48px; }
 .next-card { order: -1; } /* mobile order: greeting, Next action, Your journey, cards */
 .journey-top { margin-bottom: 20px; }
 .journey-top p { margin: 0; color: var(--text-muted); font-size: 1rem; }
@@ -32,10 +32,10 @@
 .round-btn:hover { transform: translateX(4px); background: var(--next-hover); }
 .next-card .empty-note { color: var(--next-muted); margin: 0; }
 
-.ov-cards { display: grid; gap: 24px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+.ov-cards { display: grid; gap: 32px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
 .ov-cards h3 { margin-bottom: 14px; font: 500 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
 .ov-cards p { margin: 0; color: var(--text-muted); }
-.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; font-size: .95rem; }
+.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: .95rem; }
 .desc.open { display: block; }
 .read-more { margin-top: 10px; padding: 0; border: 0; background: none; color: var(--text); font: 600 .9rem var(--font-body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .big-num { font: 700 2.2rem/1 var(--font-head); color: var(--text) !important; }
@@ -49,6 +49,12 @@
 @container (max-width: 879px) {
   .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stepper li:nth-child(3n)::after { display: none; }
+}
+/* A short journey (up to 4 steps) keeps one row down to the narrow layout, instead of wrapping 3 + 1. */
+@container (min-width: 560px) and (max-width: 879px) {
+  .stepper[data-short] { grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); }
+  .stepper[data-short] li:nth-child(3n)::after { display: block; }
+  .stepper[data-short] li:last-child::after { display: none; }
 }
 @container (max-width: 559px) {
   .stepper { grid-template-columns: 1fr; row-gap: 4px; }
