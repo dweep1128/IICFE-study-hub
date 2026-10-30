@@ -12,19 +12,35 @@ const Hub = {
   url(path) { return `/api/courses/${encodeURIComponent(this.courseId)}/${path}`; },
 };
 
+// The Founder's Lab portal's own navigation, then Study Hub's Certificate and Amigo.
 const NAV = [
-  { id: "overview", label: "Overview", icon: "overview" },
-  { id: "guide", label: "Course Guide", icon: "guide" },
-  { id: "resources", label: "Resources", icon: "resources" },
-  { id: "mock", label: "Mock Tests", icon: "mock" },
-  { id: "documents", label: "Documents", icon: "documents" },
-  { id: "final", label: "Final Exam", icon: "exam" },
+  { id: "overview", label: "Overview", icon: "pGrid" },
+  { id: "journey", label: "My Journey", icon: "pCompass" },
+  { id: "toolkit", label: "Toolkit", icon: "pBook" },
+  { id: "sessions", label: "Sessions", icon: "pCalendar" },
+  { id: "documents", label: "Documents", icon: "pFile" },
   { id: "certificate", label: "Certificate", icon: "certificate" },
   { id: "amigo", label: "Amigo", icon: "chatbot" }, // icon name is the shell's chat-bubble glyph
 ];
+// Pages that are not in the sidebar but still have a route. They belong to Sessions (Session 1's Study Notes, Activities, Practice and Final Exam)
+// and highlight it in the nav. TODO(sessions): move these under #sessions/s1/... and delete this list.
+const SESSION_ROUTES = ["guide", "resources", "mock", "final"];
 // All four session steps are native: Resources (js/hub/session.js), Mock Tests and Final Exam (js/hub/tests.js); the rest are ordinary panels.
 const RAIL_TABS = ["resources", "mock", "final"];
-const NEEDS_PROGRESS = new Set(["overview", "resources", "mock", "final", "certificate"]);
+const NEEDS_PROGRESS = new Set(["resources", "mock", "final", "certificate"]);
+
+// TODO(portal): temporary stand-ins, replaced as each portal page is built. Sessions links to Session 1's existing pages meanwhile.
+const STAND_IN = {
+  journey: ["My Journey", "Your startup journey, mapped."],
+  toolkit: ["Toolkit", "Six guides. One founder's journey."],
+  sessions: ["Sessions", "Your session plan."],
+};
+for (const [id, [label, title]] of Object.entries(STAND_IN)) {
+  Panels[id] = async (el) => {
+    el.innerHTML = `<div class="panel-head"><p class="mono-label">${esc(label)}</p><h1>${esc(title)}</h1></div>` + emptyState("Being rebuilt", "This page is coming in the next step.", icon("lock"))
+      + (id === "sessions" ? `<p style="margin-top:16px"><a class="btn-pill" href="#resources/study-notes">Session 1: Study Notes</a> <a class="btn-pill" href="#mock">Practice Test</a> <a class="btn-pill" href="#final">Final Exam</a></p>` : "");
+  };
+}
 
 let shell;
 let seq = 0;
@@ -35,7 +51,7 @@ const LEGACY_IDS = { chatbot: "amigo", exam: "final" }; // old bookmarks
 const currentId = () => {
   const raw = hashParts()[0];
   const id = LEGACY_IDS[raw] ?? raw;
-  return NAV.some((n) => n.id === id) ? id : "overview";
+  return NAV.some((n) => n.id === id) || SESSION_ROUTES.includes(id) ? id : "overview";
 };
 
 // Small lock beside "Final Exam" while it is locked. The link still works: it opens the Requirements page.
@@ -59,13 +75,22 @@ function syncExamLock() {
 // A module the course doesn't have (or hasn't released) gets a calm, specific message instead of a crash or a silent fallback.
 const notAvailableYet = (el) => { el.innerHTML = emptyState("This module isn't available yet", "It will open here when your mentors release it.", icon("lock")); };
 
-const updateCrumb = (id, step) => shell.setCrumb(["My Courses", Hub.title, step ?? NAV.find((n) => n.id === id).label].filter(Boolean));
+const labelOf = (id) => NAV.find((n) => n.id === id)?.label ?? "Sessions";
+
+// "Your journey" in the sidebar: the stage progress, drawn from the server's journey.
+function drawJourneyWidget() {
+  const j = Founders.journeyNow();
+  shell.setWidget(j ? `<a class="jw" href="#journey">
+    <div class="jw-top"><b>Your journey</b><span class="jw-chev" aria-hidden="true">${icon("pChevron")}</span></div>
+    <div class="jw-row"><div class="jw-track" role="progressbar" aria-label="Journey progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${j.percent}"><i style="transform:scaleX(${j.percent / 100})"></i></div><span class="jw-pct">${j.percent}%</span></div>
+    <p class="jw-lab">${j.doneStages} of ${j.totalStages} stages</p></a>` : "");
+}
 
 async function route(isFirst = false) {
   const id = currentId();
   const mine = ++seq;
   const panel = shell.panel;
-  shell.setActive(id);
+  shell.setActive(SESSION_ROUTES.includes(id) ? "sessions" : id);
   shell.closeDrawer();
   shell.setRail(RAIL_TABS.includes(id)); // these views get the 72px icon rail (see shell.js)
   syncExamLock();
@@ -75,8 +100,7 @@ async function route(isFirst = false) {
 
   Hub.cleanup?.();
   Hub.cleanup = null;
-  updateCrumb(id);
-  document.title = `${NAV.find((n) => n.id === id).label} · IICFE Study Hub`;
+  document.title = `${labelOf(id)} · IICFE Study Hub`;
   panel.innerHTML = skeleton();
 
   const el = document.createElement("div");
@@ -108,7 +132,7 @@ async function startHub() {
   if (!Hub.user) return location.replace("signin.html");
 
   document.body.classList.add("hub-page");
-  shell = mountShell({ nav: NAV, backLink: { href: "workspace.html", label: "My Workspace" }, user: Hub.user });
+  shell = mountShell({ nav: NAV, backLink: { href: "workspace.html", label: "My Workspace" }, user: Hub.user, profileHref: "#profile" });
   shell.panel.innerHTML = skeleton();
   if (!/^[\w-]{1,40}$/.test(Hub.courseId)) return showNotFound();
 
@@ -122,8 +146,13 @@ async function startHub() {
   }
 
   addEventListener("hashchange", () => route());
+  shell.setTopbar({ left: Hub.title, right: Hub.manifest?.cohortLabel ?? Hub.title }); // the left becomes the startup name once the profile exists
   Founders.watch(syncExamLock);
-  if (Hub.manifest) Founders.ready().catch(() => {}); // start loading progress now; each screen that needs it waits for it (and shows Retry if it fails)
+  if (Hub.manifest) {
+    Founders.watch(drawJourneyWidget);
+    Founders.journey().catch(() => {}); // the sidebar widget fills in when this arrives; the Overview and My Journey show their own Retry if it fails
+    Founders.ready().catch(() => {}); // start loading lab progress now; each screen that needs it waits for it (and shows Retry if it fails)
+  }
   // The bell lists dues, webinars and news from the same data the workspace uses.
   api("/api/workspace").then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
   route(true);

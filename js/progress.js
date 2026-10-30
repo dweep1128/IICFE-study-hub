@@ -23,6 +23,17 @@ const Founders = (() => {
   const PROGRESS_EVENT = "founders-progress";
   let manifestPromise = null;
 
+  // ---------- the journey (7 stages, ticks, answers): computed by the server, drawn here ----------
+  let journeyCache = null;
+  // Loads (or returns the cached) journey. `force` re-reads it from the server. Watchers are told whenever it changes.
+  async function journey(force = false) {
+    if (force || !journeyCache) { journeyCache = await api(`${LAB_API}/journey`); changed(); }
+    return journeyCache;
+  }
+  const journeyNow = () => journeyCache;
+  // For writes that return the updated journey (a tick, an answer).
+  const setJourney = (j) => { journeyCache = j; changed(); };
+
   // ---------- the store: a mirror of the server's progress, keyed by each step's storageKey ----------
   const store = new Map(); // storageKey -> value ({id:true,...} for notes, {team,pts,done} for activities, true for practice, the score slip for the exam)
   const examState = new Map(); // sessionId -> "none" | "in_progress" | "submitted"
@@ -215,5 +226,5 @@ const Founders = (() => {
   // The lab API for one session (practice, exam). `api` redirects to sign-in on 401 and throws an Error with the server's message otherwise.
   const lab = (sessionId, path, opts) => api(`${LAB_API}/${sessionId}/${path}`, opts);
 
-  return { COURSE_ID, STEP_TAB, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam };
+  return { COURSE_ID, STEP_TAB, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam };
 })();

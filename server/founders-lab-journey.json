@@ -1,0 +1,250 @@
+{
+  "revenueTarget": 500,
+  "stages": [
+    {
+      "id": "pre-ideation",
+      "n": "01",
+      "label": "Pre-Ideation",
+      "deliverables": [
+        {
+          "id": "founder-profile",
+          "label": "About me and my role",
+          "hint": "Write 2–3 lines: who you are and what you will do in the team.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 400
+        },
+        {
+          "id": "problem-areas",
+          "label": "Three problems I care about",
+          "hint": "Pick problems you have seen at school, at home or in your area.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 400
+        },
+        {
+          "id": "team-agreement",
+          "label": "Our team rules",
+          "hint": "Who does what, and how we sort out disagreements.",
+          "required": false,
+          "kind": "text",
+          "maxLength": 500
+        }
+      ]
+    },
+    {
+      "id": "ideation",
+      "n": "02",
+      "label": "Ideation",
+      "deliverables": [
+        {
+          "id": "startup-description",
+          "label": "What our idea is",
+          "hint": "Two or three simple sentences.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 400
+        },
+        {
+          "id": "problem-statement",
+          "label": "The problem, in one sentence",
+          "hint": "Who has the problem, and why is it annoying or costly for them?",
+          "required": true,
+          "kind": "text",
+          "maxLength": 200
+        },
+        {
+          "id": "solution-concept",
+          "label": "Our solution: a simple sketch",
+          "hint": "Draw it on paper and take a photo. Rough is fine.",
+          "required": true,
+          "kind": "upload"
+        },
+        {
+          "id": "pitch-deck-draft",
+          "label": "Idea slides (5–6 slides is fine)",
+          "hint": "Bonus: a first draft of slides about your idea.",
+          "required": false,
+          "kind": "upload"
+        },
+        {
+          "id": "competitor-scan",
+          "label": "Who else solves this? Three examples",
+          "hint": "Include what people do today with no product at all, like asking a friend.",
+          "required": false,
+          "kind": "text",
+          "maxLength": 500
+        }
+      ]
+    },
+    {
+      "id": "validation",
+      "n": "03",
+      "label": "Validation",
+      "deliverables": [
+        {
+          "id": "interview-log",
+          "label": "Talk to 5 people and write what they said",
+          "hint": "Classmates, family or teachers. Write their words, not yours.",
+          "required": true,
+          "kind": "upload"
+        },
+        {
+          "id": "fit-summary",
+          "label": "What I learned from these talks",
+          "hint": "Did anything change in your thinking? Write a few lines.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 500
+        },
+        {
+          "id": "landing-test",
+          "label": "Quick idea test: a poll or sign-up sheet",
+          "hint": "Bonus: a Google Form or paper sheet is fine. Count how many say yes.",
+          "required": false,
+          "kind": "check"
+        }
+      ]
+    },
+    {
+      "id": "mvp",
+      "n": "04",
+      "label": "MVP",
+      "deliverables": [
+        {
+          "id": "product-summary",
+          "label": "Our product: what it is and does",
+          "hint": "One paragraph, simple words.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 500
+        },
+        {
+          "id": "feature-scope",
+          "label": "Feature list: what we kept and what we cut",
+          "hint": "3 to 5 lines. What you left out matters as much as what you kept.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 500
+        },
+        {
+          "id": "first-users",
+          "label": "Show it to 3 people and write what they said",
+          "hint": "Classmates, friends or family. Note what they liked and what confused them.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 600
+        },
+        {
+          "id": "demo-video",
+          "label": "Product demo",
+          "hint": "Bonus: a photo or screenshot of your prototype is fine.",
+          "required": false,
+          "kind": "upload"
+        },
+        {
+          "id": "cost-sheet",
+          "label": "Cost-to-build sheet",
+          "hint": "Bonus: time and money spent so far, even if it is ₹0.",
+          "required": false,
+          "kind": "upload"
+        }
+      ]
+    },
+    {
+      "id": "first-customer",
+      "n": "05",
+      "label": "First Customer",
+      "deliverables": [
+        {
+          "id": "pricing-sheet",
+          "label": "Our price: what we would charge and why",
+          "hint": "Compare with what people pay for similar things today.",
+          "required": true,
+          "kind": "upload"
+        },
+        {
+          "id": "paying-customer",
+          "label": "One person who says “I would buy this”",
+          "hint": "A classmate, teacher or family member. No money needed yet.",
+          "required": true,
+          "kind": "check"
+        },
+        {
+          "id": "testimonial-one",
+          "label": "One customer comment",
+          "hint": "Bonus: one sentence in their own words.",
+          "required": false,
+          "kind": "text",
+          "maxLength": 200
+        },
+        {
+          "id": "real-sale",
+          "label": "A real sale",
+          "hint": "Bonus: if someone actually pays, any amount counts.",
+          "required": false,
+          "kind": "check"
+        }
+      ]
+    },
+    {
+      "id": "first-revenue",
+      "n": "06",
+      "label": "First Revenue",
+      "deliverables": [
+        {
+          "id": "unit-economics",
+          "label": "Cost and price of one item",
+          "hint": "What does one item cost you, what do you sell it for, and what is left over?",
+          "required": true,
+          "kind": "text",
+          "maxLength": 400
+        },
+        {
+          "id": "testimonials-three",
+          "label": "Comments from 3 people who tried it",
+          "hint": "Three different people, one sentence each, in their own words.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 600
+        },
+        {
+          "id": "revenue-threshold",
+          "label": "Earn your first ₹500",
+          "hint": "Bonus: tick once you have earned this much from real customers.",
+          "required": false,
+          "kind": "check"
+        }
+      ]
+    },
+    {
+      "id": "investment-ready",
+      "n": "07",
+      "label": "Investment Ready",
+      "deliverables": [
+        {
+          "id": "demo-day-profile",
+          "label": "One-page summary of my idea",
+          "hint": "The problem, your solution, who it helps and what you learned.",
+          "required": true,
+          "kind": "text",
+          "maxLength": 1000
+        },
+        {
+          "id": "pitch-practice",
+          "label": "Pitch it in 3 minutes to someone",
+          "hint": "Practise with a friend, family member or teacher and ask for one tip.",
+          "required": true,
+          "kind": "check"
+        },
+        {
+          "id": "competition-entry",
+          "label": "Enter one competition",
+          "hint": "Bonus: pick one from the Competitions tab, then tick this.",
+          "required": false,
+          "kind": "check"
+        }
+      ]
+    }
+  ]
+}

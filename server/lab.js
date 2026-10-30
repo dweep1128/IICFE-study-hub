@@ -13,11 +13,14 @@ const express = require("express");
 const sheets = require("./sheets");
 const tests = require("./founders-lab-tests.json");
 const manifest = require("../content/founders-lab/manifest.json");
+const { buildJourney, ALL_ITEMS } = require("./journey");
 const { isId, httpError, parseJson } = require("./util");
 
 const COURSE_ID = manifest.courseId;
 const PROGRESS_TAB = "LabProgress";
 const ATTEMPTS_TAB = "LabExamAttempts";
+const CHECKLIST_TAB = "LabChecklist";
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const CLIENT_PARTS = ["notes", "activities"]; // practice and the exam are written by this server only
 const OPTIONS = 4;
 const SECS_PER_MIN = 60;
@@ -65,6 +68,8 @@ function withLock(key, job) {
 }
 
 // ---------- progress rows ----------
+const todayIST = () => new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+const checkKey = (sid, itemId) => `${sid}|${COURSE_ID}|${itemId}`;
 const progressKey = (sid, sessionId, part) => `${sid}|${COURSE_ID}|${sessionId}|${part}`;
 const attemptKey = (sid, sessionId) => `${sid}|${COURSE_ID}|${sessionId}`;
 
@@ -92,13 +97,18 @@ const stateOf = (t, sid, sessionId, part) => {
   return row ? parseJson(row.stateJson, null) : null;
 };
 
-async function saveState(sid, sessionId, part, state) {
-  const key = progressKey(sid, sessionId, part);
-  const values = { studentId: sid, courseId: COURSE_ID, sessionId, part, stateJson: JSON.stringify(state), updatedAt: new Date().toISOString() };
-  await withLock(key, async () => {
-    if (!(await sheets.updateRow(PROGRESS_TAB, "progressKey", key, values))) await sheets.appendRow(PROGRESS_TAB, { progressKey: key, ...values });
+// Updates the row whose keyColumn is `key`, or adds it. One at a time per key (per process; see the ponytail note at the top).
+function upsert(tab, keyColumn, key, values) {
+  return withLock(`${tab}|${key}`, async () => {
+    if (!(await sheets.updateRow(tab, keyColumn, key, values))) await sheets.appendRow(tab, { [keyColumn]: key, ...values });
   });
 }
+
+const saveState = (sid, sessionId, part, state) => upsert(PROGRESS_TAB, "progressKey", progressKey(sid, sessionId, part), {
+  studentId: sid, courseId: COURSE_ID, sessionId, part, stateJson: JSON.stringify(state), updatedAt: new Date().toISOString(),
+});
+
+const journeyOf = (t, sid) => buildJourney(t.LabChecklist.filter((r) => r.studentId === sid));
 
 // ---------- the unlock rule (the server's copy: the browser's is only for display) ----------
 function gateOf(t, sid, session) {
@@ -198,6 +208,38 @@ module.exports = function labRouter({ requireLogin }) {
       next(httpError(503, UNAVAILABLE));
     }
   };
+
+  // ----- journey (the 7 stages, ticks and written answers) -----
+  r.get("/journey", route(async (req, res) => {
+    const t = await load(req, [CHECKLIST_TAB]);
+    res.json(journeyOf(t, req.user.studentId));
+  }));
+
+  // Body: { itemId, checked } for tick items, { itemId, answer } for written items. Upload items are completed by an approved upload, never here.
+  // The stage is never sent or stored: it is derived from the ticks (server/journey.js). Returns the updated journey.
+  r.post("/journey/check", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const { itemId, checked, answer } = req.body ?? {};
+    const item = typeof itemId === "string" ? ALL_ITEMS.get(itemId) : undefined;
+    if (!item) throw httpError(400, "Invalid request.");
+    if (item.kind === "upload") throw httpError(400, "This item is completed by uploading proof.");
+    const isText = item.kind === "text";
+    if (isText ? typeof answer !== "string" : typeof checked !== "boolean") throw httpError(400, "Invalid request.");
+    const text = isText ? answer.trim() : "";
+    if (isText && text.length > (item.maxLength ?? 0)) throw httpError(400, `Keep your answer under ${item.maxLength} characters.`);
+
+    const t = await load(req, [CHECKLIST_TAB]);
+    // Ticking ahead is refused: items in a locked stage are a preview only. Unticking is always allowed.
+    if (isText ? text !== "" : checked === true) {
+      const stage = journeyOf(t, sid).stages.find((s) => s.id === item.stageId);
+      if (stage.status === "locked") throw httpError(409, "Finish the compulsory items in the earlier stage first.");
+    }
+    const on = isText ? text !== "" : checked;
+    await upsert(CHECKLIST_TAB, "checkKey", checkKey(sid, item.id), {
+      studentId: sid, itemId: item.id, checked: on ? "TRUE" : "FALSE", checkedDate: todayIST(), ...(isText && { answer: text }),
+    });
+    res.json({ ok: true, journey: journeyOf(await load(req, [CHECKLIST_TAB]), sid) });
+  }));
 
   // ----- progress -----
   r.get("/progress", route(async (req, res) => {

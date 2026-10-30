@@ -21,10 +21,13 @@ module.exports = {
     Documents: ["docId", "courseId", "title", "category", "url"],
     Exams: ["examId", "courseId", "title", "date", "time", "mode", "instructions", "status"],
     ChatLogs: ["logId", "studentId", "courseId", "question", "answer", "date"],
-    // Founder's Lab. Created once by `npm run setup-lab`, never during a page request. One row per student, session and part.
+    // Founder's Lab. Created once by `npm run setup-lab`, never during a page request.
+    // One row per student and journey item: the tick and (for written items) the answer.
+    LabChecklist: ["checkKey", "studentId", "itemId", "checked", "answer", "checkedDate"],
+    // One row per student, session and part (notes, activities, practice).
     LabProgress: ["progressKey", "studentId", "courseId", "sessionId", "part", "stateJson", "updatedAt"],
     // One row per student and session: the Final Exam attempt (server clock, shuffle, draft, result and score slip).
     LabExamAttempts: ["attemptKey", "studentId", "courseId", "sessionId", "name", "grade", "team", "startedAt", "orderJson", "draftJson", "submittedAt", "score", "total", "seconds", "slipLine", "slipCode", "slipTs"],
   },
-  LAB_TABS: ["LabProgress", "LabExamAttempts"],
+  LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist"],
 };

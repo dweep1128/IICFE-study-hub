@@ -23,6 +23,7 @@ const tabs = {
   Enrollments: ["S001", "S002"].map((id) => ({ enrollmentId: `E-${id}`, studentId: id, courseId: "F001", status: "active", progressPct: "0", enrolledOn: "2026-10-01", completedOn: "" })),
   LabProgress: [],
   LabExamAttempts: [],
+  LabChecklist: [],
 };
 let sheetDown = false;
 const down = () => { if (sheetDown) throw Object.assign(new Error("simulated Google outage"), { code: "ETIMEDOUT" }); };
@@ -197,11 +198,69 @@ async function unlock(cookie) {
   assert.equal(prog.exam.state, "submitted");
   assert.equal(prog.exam.slip.score, KEY.final.qs.length);
 
+  // ---- journey: 7 stages, ticks and written answers, sequential locking ----
+  const J = (cookie) => get(`${LAB}/journey`, cookie);
+  const check = (body, cookie) => post(`${LAB}/journey/check`, body, cookie);
+  const fresh = (await J(outsider)); assert.equal(fresh.status, 404, "journey needs enrolment");
+  const j0 = (await J(a)).json;
+  assert.equal(j0.stages.length, 7);
+  assert.equal(j0.percent, 0);
+  assert.equal(j0.currentId, "pre-ideation");
+  assert.deepEqual(j0.stages.map((x) => x.status), ["current", "locked", "locked", "locked", "locked", "locked", "locked"]);
+  assert.equal(j0.nextAction.label, "About me and my role");
+  assert.equal(j0.nextAction.stageLabel, "Pre-Ideation");
+
+  // validation
+  assert.equal((await check({ itemId: "nope", checked: true }, a)).status, 400, "unknown item");
+  assert.equal((await check({ itemId: "solution-concept", checked: true }, a)).status, 400, "upload items are completed by proof, not a tick");
+  assert.equal((await check({ itemId: "founder-profile", checked: true }, a)).status, 400, "a written item needs an answer, not a tick");
+  assert.equal((await check({ itemId: "landing-test", answer: "x" }, a)).status, 400, "a tick item takes a boolean");
+  assert.equal((await check({ itemId: "founder-profile", answer: "x".repeat(401) }, a)).status, 400, "answers are length-limited");
+  assert.equal((await check({ itemId: "landing-test", checked: true }, a)).status, 409, "ticking ahead in a locked stage is refused");
+  assert.equal((await check({ itemId: "fit-summary", answer: "too early" }, a)).status, 409);
+  assert.equal(tabs.LabChecklist.length, 0, "refused writes leave nothing behind");
+
+  // finishing the required items of stage 1 opens stage 2
+  let r1 = await check({ itemId: "founder-profile", answer: "  I build things.  " }, a);
+  assert.equal(r1.status, 200);
+  assert.equal(r1.json.journey.stages[0].deliverables[0].answer, "I build things.", "answers are trimmed and returned");
+  assert.equal(r1.json.journey.currentId, "pre-ideation", "one of two required items done");
+  assert.equal(r1.json.journey.nextAction.label, "Three problems I care about");
+  r1 = await check({ itemId: "problem-areas", answer: "Queues, noise, litter" }, a);
+  assert.equal(r1.json.journey.doneStages, 1);
+  assert.equal(r1.json.journey.percent, 14, "1 of 7 stages");
+  assert.equal(r1.json.journey.currentId, "ideation");
+  assert.deepEqual(r1.json.journey.stages.map((x) => x.status).slice(0, 3), ["done", "current", "locked"]);
+  assert.equal(r1.json.journey.nextAction.label, "What our idea is");
+  assert.match(r1.json.journey.activity[0].title, /^Completed: /);
+  assert.equal(tabs.LabChecklist.length, 2);
+
+  // changing an answer updates its row; clearing it un-does the item (and re-locks what came after)
+  await check({ itemId: "problem-areas", answer: "Queues" }, a);
+  assert.equal(tabs.LabChecklist.length, 2, "an edit updates the row");
+  const cleared = await check({ itemId: "problem-areas", answer: "   " }, a);
+  assert.equal(cleared.json.journey.currentId, "pre-ideation");
+  assert.equal(cleared.json.journey.percent, 0);
+  await check({ itemId: "problem-areas", answer: "Queues, noise, litter" }, a);
+
+  // optional items never affect the stage; a hand-written tick on an upload item never counts
+  await check({ itemId: "team-agreement", answer: "Rotate chairing" }, a);
+  tabs.LabChecklist.push({ checkKey: "S001|F001|solution-concept", studentId: "S001", itemId: "solution-concept", checked: "TRUE", answer: "", checkedDate: "2026-10-01" });
+  const forged = (await J(a)).json;
+  assert.equal(forged.stages[1].deliverables.find((d) => d.id === "solution-concept").checked, false, "uploads count only when a reviewer approved them");
+  assert.ok(!forged.activity.some((x) => /sketch/i.test(x.title)), "and are not listed as activity");
+
+  // students only ever see their own journey
+  assert.equal((await J(b)).json.percent, 0);
+  assert.equal((await check({ itemId: "founder-profile", answer: "Bee" }, b)).json.journey.stages[0].deliverables[0].answer, "Bee");
+  assert.equal((await J(a)).json.stages[0].deliverables[0].answer, "I build things.");
+  assert.ok(tabs.LabChecklist.filter((r) => r.studentId === "S002").every((r) => r.checkKey.startsWith("S002|")), "rows are keyed by the session's student");
+
   // ---- fail soft: a Sheet outage is a clear, retryable 503 and not a crash or a leak ----
   sheetDown = true;
   const quiet = console.error;
   console.error = () => {};
-  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, DETAILS], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
+  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/journey`], ["POST", `${LAB}/journey/check`, { itemId: "landing-test", checked: false }], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, DETAILS], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
     const res = await send(m, p, body, a);
     assert.equal(res.status, 503, `${m} ${p} during an outage`);
     assert.match(res.json.error, /temporarily unavailable/i);
