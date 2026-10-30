@@ -236,13 +236,13 @@ async function init() {
   render();
 
   try {
-    [ws, manifest] = await Promise.all([api("/api/workspace"), Founders.load().catch(() => null)]);
+    [ws, manifest] = await Promise.all([api("/api/workspace"), Founders.load().then((m) => Founders.ready().then(() => m)).catch(() => null)]);
   } catch (e) {
     shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
     return;
   }
   splitCourses();
-  // The partner pages save progress in localStorage; re-read it when the student comes back or another tab saves.
+  // Re-draw when Founder's Lab progress changes (a save in this window, or a refresh after the student comes back).
   const signature = () => JSON.stringify(Object.values(courses).map((l) => l.map((c) => [c.courseId, c.progressPct, c.fl?.doneSteps])));
   Founders.watch(() => {
     const before = signature();

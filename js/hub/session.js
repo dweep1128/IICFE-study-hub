@@ -17,6 +17,10 @@ const Resources = (() => {
     return dataCache.get(session.id);
   };
 
+  // The session a hash asks for by id ("#resources/s2/..." or "#resources/s2"), or null when it names none. An id the manifest doesn't have is unknown.
+  const askedSession = (parts) => (parts.length > 1 ? parts[0] : /^s\d+$/.test(parts[0] ?? "") ? parts[0] : null);
+  const isUnknown = (manifest, parts) => { const id = askedSession(parts); return id != null && !manifest.sessions.some((s) => s.id === id); };
+
   // "#resources/study-notes" (first session) or "#resources/s2/study-notes"; a bare "#resources" opens the first unfinished step.
   function resolve(manifest, parts) {
     const [a, b] = parts;
@@ -32,6 +36,7 @@ const Resources = (() => {
   async function mount(el, hub, parts) {
     const { manifest } = hub;
     if (!manifest) return comingSoon(el, hub);
+    if (isUnknown(manifest, parts)) return notAvailableYet(el);
     const { session, native, item } = resolve(manifest, parts);
     if (!session.data || !native.length) return comingSoon(el, hub);
     const data = await loadData(session);
@@ -117,7 +122,7 @@ const Resources = (() => {
 
   // Called by the router on a hash change inside Resources: switch tab in place so games and scroll position survive.
   function go(parts) {
-    if (!active) return false;
+    if (!active || isUnknown(active.manifest, parts)) return false; // an unknown module remounts, which shows "not available yet"
     const { session, item } = resolve(active.manifest, parts);
     if (session.id !== active.sessionId) return false;
     active.select(item.key);

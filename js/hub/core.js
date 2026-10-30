@@ -24,6 +24,7 @@ const NAV = [
 ];
 // All four session steps are native: Resources (js/hub/session.js), Mock Tests and Final Exam (js/hub/tests.js); the rest are ordinary panels.
 const RAIL_TABS = ["resources", "mock", "final"];
+const NEEDS_PROGRESS = new Set(["overview", "resources", "mock", "final", "certificate"]);
 
 let shell;
 let seq = 0;
@@ -55,6 +56,9 @@ function syncExamLock() {
   a.title = LOCK_TIP;
 }
 
+// A module the course doesn't have (or hasn't released) gets a calm, specific message instead of a crash or a silent fallback.
+const notAvailableYet = (el) => { el.innerHTML = emptyState("This module isn't available yet", "It will open here when your mentors release it.", icon("lock")); };
+
 const updateCrumb = (id, step) => shell.setCrumb(["My Courses", Hub.title, step ?? NAV.find((n) => n.id === id).label].filter(Boolean));
 
 async function route(isFirst = false) {
@@ -77,6 +81,8 @@ async function route(isFirst = false) {
 
   const el = document.createElement("div");
   try {
+    // Screens that show progress wait for it; if the server can't be reached this falls through to the error box and its Retry.
+    if (Hub.manifest && NEEDS_PROGRESS.has(id)) await Founders.ready();
     const cleanup = await Panels[id](el, Hub);
     if (mine !== seq) return cleanup?.(); // user already moved on
     panel.replaceChildren(el);
@@ -117,6 +123,7 @@ async function startHub() {
 
   addEventListener("hashchange", () => route());
   Founders.watch(syncExamLock);
+  if (Hub.manifest) Founders.ready().catch(() => {}); // start loading progress now; each screen that needs it waits for it (and shows Retry if it fails)
   // The bell lists dues, webinars and news from the same data the workspace uses.
   api("/api/workspace").then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
   route(true);
