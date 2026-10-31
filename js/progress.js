@@ -1,7 +1,7 @@
 // Founder's Lab: manifest loader + the student's progress, read from and written to the server
 // (/api/courses/F001/lab/*, stored per student in the Google Sheet), so it follows the student across browsers and devices.
 //
-// The public API is unchanged (summary, examGate, watch, readKey, writeKey), so Overview, the rings and the Certificate are not
+// The public API is unchanged (summary, examGate, watch, readKey, writeKey), so Overview and the rings are not
 // aware where progress lives. Nothing about progress is kept in localStorage any more.
 // Reads are synchronous, from `store`, which mirrors the server: load() fills it, ready() (re)fills it, a window focus refreshes it.
 // Writes (Study Notes, Activities) update `store` at once and are saved in the background, with retries.

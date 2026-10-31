@@ -192,17 +192,7 @@
 .hist td { padding: 12px; border-bottom: 1px solid var(--border); font-size: .92rem; }
 .scroll-x { overflow-x: auto; }
 
-/* ---------- documents ---------- */
-.doc-group + .doc-group { margin-top: 28px; }
-.doc-group h2 { font: 500 .68rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-.doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.doc { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; }
-.ftype { flex: none; display: grid; place-items: center; width: 46px; height: 52px; border-radius: 10px; background: var(--teal-tint); color: var(--teal); font: 500 .62rem var(--mono); letter-spacing: .06em; }
-.ftype.pdf { background: var(--ft-pdf-bg); color: var(--ft-pdf); } .ftype.doc { background: var(--ft-doc-bg); color: var(--ft-doc); } .ftype.xls { background: var(--ft-xls-bg); color: var(--ft-xls); } .ftype.ppt { background: var(--ft-ppt-bg); color: var(--ft-ppt); }
-.doc .t { flex: 1 1 200px; font-weight: 500; min-width: 0; }
-.doc .acts { display: flex; gap: 8px; }
-
-/* ---------- exam / certificate ---------- */
+/* ---------- exam ---------- */
 .exam-grid { display: grid; gap: 20px; }
 .exam-meta { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 20px 0; }
 .exam-meta dt { font: 500 .64rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
@@ -212,33 +202,6 @@
 .count strong { display: block; font: 700 1.9rem/1 var(--font-head); font-variant-numeric: tabular-nums; }
 .count span { font: 500 .58rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--next-label); }
 .instr { color: var(--text-muted); } .instr p { margin: 0 0 10px; }
-.note-line { margin: 10px 0 0; color: var(--text-muted); font-size: .88rem; }
-.cert-locked { text-align: center; max-width: 560px; }
-.lock { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: var(--gold-tint); color: var(--gold); }
-.checklist { list-style: none; margin: 22px 0; padding: 0; display: grid; gap: 10px; text-align: left; }
-.checklist li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; }
-.checklist .ic { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--border); color: var(--text); font-size: .8rem; }
-.checklist li.met .ic { background: var(--teal); color: var(--on-teal); }
-.checklist small { display: block; color: var(--text-muted); }
-.cert-frame { max-width: 760px; padding: clamp(12px, 2.4vw, 24px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
-.cert { position: relative; max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px); text-align: center; border-radius: var(--radius); color: var(--paper-ink); background: linear-gradient(135deg, var(--paper), var(--paper-edge)); border: 2px solid var(--paper-gold); box-shadow: inset 0 0 0 8px var(--paper), inset 0 0 0 9px color-mix(in srgb, var(--paper-gold) 45%, transparent); }
-.cert .cert-logo { display: block; width: auto; height: 56px; margin: 0 auto 12px; border-radius: 8px; }
-.cert .mono-label { color: var(--paper-gold); }
-.cert h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 10px 0; color: var(--paper-ink); }
-.cert .who { font: 700 clamp(1.5rem, 4vw, 2.2rem) var(--font-head); color: var(--paper-gold); margin: 18px 0 6px; }
-.cert p { margin: 4px 0; color: var(--paper-muted); }
-.cert b { color: var(--paper-ink); }
-.cert-prog { margin: 8px 0 0; font-weight: 600; }
-
-/* "Download certificate" opens the print dialog (Save as PDF): only the certificate is printed */
-@page { size: A4 landscape; margin: 12mm; }
-@media print {
-  body.app-body * { visibility: hidden; }
-  .cert-frame, .cert-frame * { visibility: visible; }
-  .cert-frame { position: absolute; inset: 0 auto auto 0; width: 100%; max-width: none; padding: 0; border: 0; background: none; }
-  .cert { max-width: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-}
-
 /* ---------- Amigo (coming soon) ---------- */
 .am { max-width: 640px; margin: 0 auto; padding: 32px 0 0; text-align: center; }
 .am-avatar { display: grid; place-items: center; width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: var(--teal-tint); }

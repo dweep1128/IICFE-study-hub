@@ -12,17 +12,15 @@ const Hub = {
   url(path) { return `/api/courses/${encodeURIComponent(this.courseId)}/${path}`; },
 };
 
-// The Founder's Lab portal's own navigation, then Study Hub's Certificate and Amigo.
+// The Founder's Lab portal's own navigation, then Study Hub's Amigo.
 const NAV = [
   { id: "overview", label: "Overview", icon: "pGrid" },
   { id: "journey", label: "My Journey", icon: "pCompass" },
   { id: "toolkit", label: "Toolkit", icon: "pBook" },
   { id: "sessions", label: "Sessions", icon: "pCalendar" },
-  { id: "documents", label: "Documents", icon: "pFile" },
-  { id: "certificate", label: "Certificate", icon: "certificate" },
   { id: "amigo", label: "Amigo", icon: "chatbot" }, // icon name is the shell's chat-bubble glyph
 ];
-const NEEDS_PROGRESS = new Set(["sessions", "certificate"]);
+const NEEDS_PROGRESS = new Set(["sessions"]);
 
 let shell;
 let seq = 0;
@@ -41,11 +39,14 @@ function legacyHash() {
   if (a === "final" || a === "exam") return `#sessions/1/${b === "mentor-desk" ? "mentor-desk" : "real-test"}`;
   return null;
 }
+// An empty hash is the Overview; any other name the course does not have (a leftover #documents or #certificate included) is "unavailable".
 const currentId = () => {
   const raw = hashParts()[0];
   const id = LEGACY_IDS[raw] ?? raw;
-  return NAV.some((n) => n.id === id) ? id : "overview";
+  if (!id) return "overview";
+  return NAV.some((n) => n.id === id) ? id : "unavailable";
 };
+Panels.unavailable = async (el) => notAvailableYet(el);
 
 // Small lock beside "Final Exam" while it is locked. The link still works: it opens the Requirements page.
 const LOCK_TIP = "Complete Resources and the Practice Test to unlock";
@@ -68,7 +69,7 @@ function syncExamLock() {
 // A module the course doesn't have (or hasn't released) gets a calm, specific message instead of a crash or a silent fallback.
 const notAvailableYet = (el) => { el.innerHTML = emptyState("This module isn't available yet", "It will open here when your mentors release it.", icon("lock")); };
 
-const labelOf = (id) => NAV.find((n) => n.id === id)?.label ?? "Sessions";
+const labelOf = (id) => NAV.find((n) => n.id === id)?.label ?? "Not available";
 
 // "Your journey" in the sidebar: the stage progress, drawn from the server's journey.
 function drawJourneyWidget() {

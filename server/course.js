@@ -91,12 +91,6 @@ module.exports = function courseRouter({ requireLogin, secret }) {
     }));
   });
 
-  r.get("/courses/:id/documents", async (req, res) => {
-    const { t, course } = await loadCourse(req, req.params.id, ["Documents"]);
-    res.json(t.Documents.filter((d) => d.courseId === course.courseId)
-      .map((d) => ({ docId: d.docId, title: d.title, category: d.category || "Other", url: safeUrl(d.url) })));
-  });
-
   r.get("/courses/:id/exam", async (req, res) => {
     const { t, course } = await loadCourse(req, req.params.id, ["Exams"]);
     const exam = t.Exams.filter((e) => e.courseId === course.courseId && lower(e.status) !== "cancelled")
@@ -108,26 +102,6 @@ module.exports = function courseRouter({ requireLogin, secret }) {
       examId: exam.examId, title: exam.title, date: exam.date, time: exam.time, mode: exam.mode, instructions: exam.instructions,
       status: lower(exam.status), startsAt: startsAt ? new Date(startsAt).toISOString() : null,
       canStart: lower(exam.status) === "scheduled" && startsAt != null && now >= startsAt && now <= startsAt + EXAM_WINDOW_MIN * MS_PER_MIN,
-    });
-  });
-
-  r.get("/courses/:id/certificate", async (req, res) => {
-    const sid = req.user.studentId;
-    const { t, course } = await loadCourse(req, req.params.id, ["Certificates", "Modules", "ModuleProgress", "Exams"]);
-    const prog = progressOf(t, sid, course.courseId);
-    const done = prog.completed;
-    // Exams has no per-student column, so "passed" is the exam row's status. Add an ExamResults tab for multi-student use.
-    const examPassed = t.Exams.some((e) => e.courseId === course.courseId && lower(e.status) === "passed");
-    const conditions = [
-      { key: "modules", label: "Complete all modules", met: prog.total > 0 && done === prog.total, detail: `${done} of ${prog.total} complete` },
-      { key: "exam", label: "Pass the final exam", met: examPassed, detail: examPassed ? "Passed" : "Not passed yet" },
-    ];
-    const row = t.Certificates.find((c) => c.studentId === sid && c.courseId === course.courseId);
-    res.json({
-      eligible: conditions.every((c) => c.met),
-      conditions,
-      progress: Math.round(prog.percent / 2 + (examPassed ? 50 : 0)),
-      certificate: row ? { certId: row.certId, issuedOn: row.issuedOn, certUrl: safeUrl(row.certUrl), courseTitle: course.title, studentName: req.user.name } : null,
     });
   });
 
