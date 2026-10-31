@@ -17,6 +17,7 @@ const { buildJourney, ALL_ITEMS } = require("./journey");
 const submissions = require("./submissions");
 const competitions = require("./competitions");
 const sessionsLib = require("./sessions");
+const rules = require("../js/profile-rules.js"); // the same file the browser's form uses
 const { isId, httpError, parseJson } = require("./util");
 
 const COURSE_ID = manifest.courseId;
@@ -27,6 +28,7 @@ const SUBMISSIONS_TAB = "LabSubmissions";
 const COMPETITIONS_TAB = "LabCompetitions";
 const ENTRIES_TAB = "LabCompetitionEntries";
 const SESSIONS_TAB = "LabSessions";
+const PROFILES_TAB = "LabProfiles";
 const MAX_SESSION_NO = 1000;
 const MAX_TICKS = 200; // a bound on the request, not on the outputs a session may list
 const JOURNEY_TABS = [CHECKLIST_TAB, SUBMISSIONS_TAB];
@@ -395,6 +397,48 @@ module.exports = function labRouter({ requireLogin }) {
     const state = { best: Math.max(prev?.best ?? 0, graded.score), attempts: (prev?.attempts ?? 0) + 1 };
     await saveState(sid, sessionsLib.idOf(no), "quiz", state);
     res.json({ grade: { ...graded, bestScore: state.best, attempts: state.attempts } });
+  }));
+
+  // ----- the startup profile and the first-visit survey -----
+  const profileKey = (sid) => `${sid}|${COURSE_ID}`;
+  const profileOf = (t, sid) => {
+    const row = t.LabProfiles.find((x) => x.profileKey === profileKey(sid));
+    return row ? rules.toProfile({ ...row, team: parseJson(row.teamJson, []) }) : null;
+  };
+  const profileBody = (p) => ({ profile: p, completion: rules.completion(p), needsOnboarding: rules.needsOnboarding(p) });
+  const saveProfile = async (sid, p) => {
+    await upsert(PROFILES_TAB, "profileKey", profileKey(sid), {
+      studentId: sid, courseId: COURSE_ID, ...Object.fromEntries(rules.FIELDS.map((f) => [f, p[f]])),
+      teamJson: JSON.stringify(p.team), completionPct: String(rules.completion(p)), updatedAt: new Date().toISOString(),
+    });
+    return p;
+  };
+
+  r.get("/profile", route(async (req, res) => {
+    const t = await load(req, [PROFILES_TAB]);
+    res.json(profileBody(profileOf(t, req.user.studentId)));
+  }));
+
+  // Body: the profile's fields. A part-filled profile saves; only too-long or malformed values are refused.
+  r.post("/profile", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const next = rules.toProfile(req.body);
+    const errors = rules.validate(next, typeof req.body?.stage === "string" ? req.body.stage.trim() : "");
+    if (Object.keys(errors).length) return res.status(400).json({ error: Object.values(errors)[0], errors });
+    await load(req, []);
+    res.json({ ok: true, ...profileBody(await saveProfile(sid, next)) });
+  }));
+
+  // Body: { startupName, oneLineIdea }. Saved into the same row the Profile page uses; the other fields are kept as they are.
+  r.post("/onboarding", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const t = await load(req, [PROFILES_TAB]);
+    const current = profileOf(t, sid) ?? rules.toProfile({});
+    const pick = (v, fallback) => (typeof v === "string" ? v.trim() : fallback);
+    const next = { ...current, startupName: pick(req.body?.startupName, current.startupName), oneLineIdea: pick(req.body?.oneLineIdea, current.oneLineIdea) };
+    if (!next.startupName || next.startupName.length > rules.LIMITS.startupName) throw httpError(400, `Enter a startup name (up to ${rules.LIMITS.startupName} characters).`);
+    if (!next.oneLineIdea || next.oneLineIdea.length > rules.LIMITS.oneLineIdea) throw httpError(400, `Enter a one-line description (up to ${rules.LIMITS.oneLineIdea} characters).`);
+    res.json({ ok: true, ...profileBody(await saveProfile(sid, rules.toProfile(next))) });
   }));
 
   // ----- competitions -----

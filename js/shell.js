@@ -323,6 +323,7 @@ function mountShell({ nav, backLink = null, user, profileHref = null }) {
       $(".today", root).textContent = right;
     },
     hideNav() { $("nav", side).hidden = true; }, // e.g. "course not found": nothing to navigate inside
+    showNav() { $("nav", side).hidden = false; },
     setActive(id) {
       $$("a[data-id]", side).forEach((a) => (a.dataset.id === id ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
       const cur = $(`a[data-id="${CSS.escape(id)}"]`, side);

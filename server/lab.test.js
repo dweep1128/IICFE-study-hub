@@ -29,6 +29,7 @@ const tabs = {
   LabCompetitions: [],
   LabCompetitionEntries: [],
   LabSessions: [],
+  LabProfiles: [],
 };
 let sheetDown = false;
 const down = () => { if (sheetDown) throw Object.assign(new Error("simulated Google outage"), { code: "ETIMEDOUT" }); };
@@ -422,6 +423,38 @@ async function unlock(cookie) {
   assert.equal((await get(`${LAB}/sessions`, a)).json.sessions[1].steps[0].key, "video", "the card counts it too");
   assert.equal((await post(`${LAB}/sessions/2/video`, { watched: false }, a)).status, 200);
   assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[0].done, false, "it can be unmarked");
+
+  // ---- profile: first-visit survey, part-filled saves, one shared set of rules ----
+  const PF = `${LAB}/profile`;
+  const p0 = (await get(PF, a)).json;
+  assert.deepEqual([p0.profile, p0.completion, p0.needsOnboarding], [null, 0, true], "no profile yet: the survey is needed");
+  assert.equal((await post(`${LAB}/onboarding`, { startupName: "  ", oneLineIdea: "x" }, a)).status, 400);
+  assert.equal((await post(`${LAB}/onboarding`, { startupName: "Rocket", oneLineIdea: "" }, a)).status, 400);
+  assert.equal((await post(`${LAB}/onboarding`, { startupName: "R".repeat(61), oneLineIdea: "x" }, a)).status, 400, "name too long");
+  assert.equal((await post(`${LAB}/onboarding`, { startupName: "Rocket", oneLineIdea: "x".repeat(141) }, a)).status, 400, "idea too long");
+  assert.equal((await get(PF, a)).json.profile, null, "a refused survey saves nothing");
+  const ob = await post(`${LAB}/onboarding`, { startupName: " Rocket Labs ", oneLineIdea: "Cheap sensors for farms" }, a);
+  assert.equal(ob.status, 200);
+  assert.deepEqual([ob.json.needsOnboarding, ob.json.completion, ob.json.profile.startupName], [false, 35, "Rocket Labs"], "name 20 + idea 15");
+  assert.equal((await get(PF, b)).json.needsOnboarding, true, "another student is separate");
+
+  const bad = await post(PF, { startupName: "Rocket Labs", oneLineIdea: "Cheap sensors", stage: "galaxy", website: "javascript:alert(1)", team: [{ name: "", role: "CTO" }] }, a);
+  assert.equal(bad.status, 400);
+  assert.deepEqual(Object.keys(bad.json.errors).sort(), ["stage", "team.0.name", "website"]);
+  assert.equal((await post(PF, { startupName: "x", problemStatement: "p".repeat(601) }, a)).status, 400);
+  assert.equal((await get(PF, a)).json.completion, 35, "a refused save changes nothing");
+
+  const part = await post(PF, { startupName: "Rocket Labs", oneLineIdea: "Cheap sensors", problemStatement: "Farms lose crops", stage: "idea", team: [{ name: "Aarav", role: "" }, { name: "", role: "", contact: "" }] }, a);
+  assert.equal(part.status, 200, "a part-filled profile saves");
+  assert.deepEqual(part.json.profile.team, [{ name: "Aarav", role: "", contact: "" }], "blank rows are dropped");
+  assert.equal(part.json.completion, 65, "name 20 + problem 20 + idea 15 + stage 10 (a team row needs a name AND a role)");
+  const full = await post(PF, { startupName: "Rocket Labs", oneLineIdea: "Cheap sensors", problemStatement: "Farms lose crops", stage: "MVP", yourName: "Aarav", yourRole: "CEO", website: "https://rocket.example", description: "More", team: [{ name: "Aarav", role: "CEO", contact: "" }] }, a);
+  assert.deepEqual([full.json.completion, full.json.profile.stage], [100, "mvp"]);
+  assert.equal((await post(`${LAB}/onboarding`, { startupName: "Rocket 2", oneLineIdea: "Cheap sensors" }, a)).json.profile.website, "https://rocket.example", "the survey keeps the other fields");
+  const stored = (await get(PF, a)).json;
+  assert.deepEqual([stored.profile.startupName, stored.completion, stored.needsOnboarding], ["Rocket 2", 100, false]);
+  assert.equal(tabs.LabProfiles.filter((x) => x.studentId === "S001").length, 1, "one row per student, updated in place");
+
 
   // a Sheet row can hide a session again, and a session in the past is not "next"
   tabs.LabSessions[0].visible = "FALSE";

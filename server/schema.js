@@ -35,10 +35,12 @@ module.exports = {
     // Recap: plain lines, then "- takeaway" lines. quizJson: [{ "q", "options": [4], "answer": 0-3, "explain" }] (up to 10; read by the server only).
     LabSessions: ["sessionNo", "name", "phase", "date", "time", "duration", "visible", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"],
     // videoUrl: a YouTube, Vimeo or Google Drive link (shown embedded, no autoplay); empty = "Video lecture coming soon".
+    // One row per student: the startup profile (rules in js/profile-rules.js). teamJson is the team members as JSON; completionPct is a snapshot.
+    LabProfiles: ["profileKey", "studentId", "courseId", "startupName", "oneLineIdea", "problemStatement", "description", "stage", "yourName", "yourRole", "website", "teamJson", "completionPct", "updatedAt"],
     // One row per student, session and part (notes, activities, practice; ticks and quiz for sessions 2 and later).
     LabProgress: ["progressKey", "studentId", "courseId", "sessionId", "part", "stateJson", "updatedAt"],
     // One row per student and session: the Final Exam attempt (server clock, shuffle, draft, result and score slip).
     LabExamAttempts: ["attemptKey", "studentId", "courseId", "sessionId", "name", "grade", "team", "startedAt", "orderJson", "draftJson", "submittedAt", "score", "total", "seconds", "slipLine", "slipCode", "slipTs"],
   },
-  LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist", "LabSubmissions", "LabCompetitions", "LabCompetitionEntries", "LabSessions"],
+  LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist", "LabSubmissions", "LabCompetitions", "LabCompetitionEntries", "LabSessions", "LabProfiles"],
 };
