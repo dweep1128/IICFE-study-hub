@@ -399,13 +399,13 @@ module.exports = function labRouter({ requireLogin }) {
     res.json({ grade: { ...graded, bestScore: state.best, attempts: state.attempts } });
   }));
 
-  // ----- the startup profile and the first-visit survey -----
+  // ----- the startup profile (every field optional; a blank profile is fine) -----
   const profileKey = (sid) => `${sid}|${COURSE_ID}`;
   const profileOf = (t, sid) => {
     const row = t.LabProfiles.find((x) => x.profileKey === profileKey(sid));
     return row ? rules.toProfile({ ...row, team: parseJson(row.teamJson, []) }) : null;
   };
-  const profileBody = (p) => ({ profile: p, completion: rules.completion(p), needsOnboarding: rules.needsOnboarding(p) });
+  const profileBody = (p) => ({ profile: p, completion: rules.completion(p) });
   const saveProfile = async (sid, p) => {
     await upsert(PROFILES_TAB, "profileKey", profileKey(sid), {
       studentId: sid, courseId: COURSE_ID, ...Object.fromEntries(rules.FIELDS.map((f) => [f, p[f]])),
@@ -427,18 +427,6 @@ module.exports = function labRouter({ requireLogin }) {
     if (Object.keys(errors).length) return res.status(400).json({ error: Object.values(errors)[0], errors });
     await load(req, []);
     res.json({ ok: true, ...profileBody(await saveProfile(sid, next)) });
-  }));
-
-  // Body: { startupName, oneLineIdea }. Saved into the same row the Profile page uses; the other fields are kept as they are.
-  r.post("/onboarding", route(async (req, res) => {
-    const sid = req.user.studentId;
-    const t = await load(req, [PROFILES_TAB]);
-    const current = profileOf(t, sid) ?? rules.toProfile({});
-    const pick = (v, fallback) => (typeof v === "string" ? v.trim() : fallback);
-    const next = { ...current, startupName: pick(req.body?.startupName, current.startupName), oneLineIdea: pick(req.body?.oneLineIdea, current.oneLineIdea) };
-    if (!next.startupName || next.startupName.length > rules.LIMITS.startupName) throw httpError(400, `Enter a startup name (up to ${rules.LIMITS.startupName} characters).`);
-    if (!next.oneLineIdea || next.oneLineIdea.length > rules.LIMITS.oneLineIdea) throw httpError(400, `Enter a one-line description (up to ${rules.LIMITS.oneLineIdea} characters).`);
-    res.json({ ok: true, ...profileBody(await saveProfile(sid, rules.toProfile(next))) });
   }));
 
   // ----- competitions -----

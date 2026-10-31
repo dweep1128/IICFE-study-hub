@@ -28,9 +28,6 @@
   /** 0-100. The only place completion is decided. */
   const completion = (p) => (p ? REQUIRED.reduce((sum, r) => sum + (r.done(p) ? r.weight : 0), 0) : 0);
 
-  /** The first-visit gate: both fields must be non-empty once trimmed. How complete the profile is plays no part. */
-  const needsOnboarding = (p) => !p || !filled(p.startupName) || !filled(p.oneLineIdea);
-
   const str = (v) => (typeof v === "string" ? v.trim() : "");
 
   /** A clean profile from untrusted input (a form or a request body). Never throws. Blank team rows are dropped. */
@@ -75,5 +72,5 @@
     return e;
   }
 
-  return { STAGES, STAGE_LABELS, LIMITS, FIELDS, EMPTY_MEMBER, REQUIRED_KEYS, completion, needsOnboarding, toProfile, validate };
+  return { STAGES, STAGE_LABELS, LIMITS, FIELDS, EMPTY_MEMBER, REQUIRED_KEYS, completion, toProfile, validate };
 });

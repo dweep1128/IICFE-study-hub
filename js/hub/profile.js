@@ -1,4 +1,4 @@
-// Profile (#profile): the startup profile with its completion meter, and the first-visit survey that asks for the startup's name and one-line idea.
+// Profile (#profile): the startup profile with its completion meter. Every field is optional to save; nothing else in the portal depends on it.
 // The rules (limits, which fields are required, how the meter is scored) are js/profile-rules.js, the same file the server checks against.
 const PR = ProfileRules;
 const PF_FIELD_IDS = { startupName: "pf-startupName", oneLineIdea: "pf-oneLineIdea", problemStatement: "pf-problemStatement", description: "pf-description", stage: "pf-stage", website: "pf-website", yourName: "pf-yourName", yourRole: "pf-yourRole", team: "pf-team-add" };
@@ -14,9 +14,9 @@ function pfCleaned(draft) {
 
 Panels.profile = async (el, hub) => {
   if (!hub.manifest) return notAvailableYet(el);
-  const stored = hub.profile?.profile ?? null;
+  const stored = (await api(profileApi("profile"))).profile; // null until the first save
   const start = stored ?? PR.toProfile({});
-  // The member's own name is the obvious start for "your name" and the founder row, also after the survey (which asks only for the startup).
+  // The member's own name is the obvious start for "your name" and the founder row.
   const draft = {
     ...start, yourName: start.yourName || hub.user.name,
     team: start.team.length ? start.team.map((m) => ({ ...m })) : [{ ...PR.EMPTY_MEMBER, name: hub.user.name }],
@@ -126,57 +126,9 @@ Panels.profile = async (el, hub) => {
     try {
       const data = await api(profileApi("profile"), { method: "POST", body: saved });
       saved = data.profile;
-      Hub.setProfile(data);
       toast("Profile saved.");
     } catch (ex) { saved = previous; formErr.textContent = ex.message || "Could not save. Try again."; }
     saving = false;
     paint();
   });
 };
-
-// ---------- the first-visit survey ----------
-// Full screen: only the missing fields are asked (name, then one-line idea); what already exists is kept. No skipping.
-const SURVEY = {
-  startupName: { title: "What’s your startup name?", hint: "The name your team goes by. You can change it later in your profile.", max: PR.LIMITS.startupName, error: "Enter your startup name." },
-  oneLineIdea: { title: "Describe your startup in one line.", hint: "One sentence: what it does and who it is for.", max: PR.LIMITS.oneLineIdea, error: "Enter a one-line description." },
-};
-
-/** Draws the survey into `el`; calls onDone() once both answers are saved. Returns a cleanup function. */
-function mountOnboarding(el, hub, onDone) {
-  const current = hub.profile?.profile ?? PR.toProfile({});
-  const steps = ["startupName", "oneLineIdea"].filter((k) => !current[k].trim());
-  const values = { startupName: current.startupName, oneLineIdea: current.oneLineIdea };
-  const first = String(hub.user.name).trim().split(/\s+/)[0];
-  let step = 0, busy = false, alive = true;
-
-  function draw(error = "") {
-    const key = steps[step], copy = SURVEY[key], last = step === steps.length - 1;
-    el.className = "ob";
-    el.innerHTML = `<form class="ob-card" novalidate>
-      <p class="pt-eyebrow is-gold">Step ${step + 1} of ${steps.length}</p>
-      <div class="ob-steps" aria-hidden="true">${steps.map((_, i) => `<i class="${i <= step ? "is-on" : ""}"></i>`).join("")}</div>
-      ${step === 0 && first ? `<p class="ob-welcome">Welcome, ${esc(first)}. ${steps.length === 1 ? "One quick question" : "Two quick questions"} before your portal.</p>` : ""}
-      <h1 class="pt-h2">${esc(copy.title)}</h1><p class="tk-sub">${esc(copy.hint)}</p>
-      <input class="pt-field ob-input" aria-label="${esc(copy.title)}" aria-describedby="ob-help" maxlength="${copy.max}" value="${esc(values[key])}"${busy ? " disabled" : ""}${error ? ' aria-invalid="true"' : ""}>
-      <div class="pf-meta" id="ob-help"><p class="pf-err" role="alert">${esc(error)}</p><p class="pf-count" aria-live="polite" data-count>${values[key].length}/${copy.max}</p></div>
-      <div class="ss-row is-start">${step > 0 ? `<button type="button" class="btn-pill" data-back${busy ? " disabled" : ""}>Back</button>` : ""}<button type="submit" class="btn-pill solid"${busy ? " disabled" : ""}>${busy ? "Saving…" : last ? "Finish" : "Next"}</button></div></form>`;
-    const input = $(".ob-input", el);
-    input.focus();
-    input.addEventListener("input", () => { values[key] = input.value; $("[data-count]", el).textContent = `${input.value.length}/${copy.max}`; });
-    $("[data-back]", el)?.addEventListener("click", () => { step -= 1; draw(); });
-    $("form", el).addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (busy) return;
-      if (!values[key].trim()) return draw(copy.error);
-      if (!last) { step += 1; return draw(); }
-      busy = true; draw();
-      try {
-        const data = await api(profileApi("onboarding"), { method: "POST", body: { startupName: values.startupName.trim(), oneLineIdea: values.oneLineIdea.trim() } });
-        Hub.setProfile(data);
-        if (alive) onDone();
-      } catch (ex) { busy = false; if (alive) draw(ex.message || "Could not save. Please try again."); }
-    });
-  }
-  draw();
-  return () => { alive = false; };
-}

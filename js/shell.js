@@ -315,7 +315,7 @@ function mountShell({ nav, backLink = null, user, profileHref = null }) {
     setRail(eligible) { railEligible = eligible; applyRail(); },
     // A block between the nav and the profile (the Founder's Lab "Your journey" progress). Pass "" to remove it.
     setWidget(html) { const w = $("[data-widget]", side); w.innerHTML = html; w.hidden = !html; },
-    // The top bar's left text (e.g. the startup name) and right text (e.g. the course name); the bell stays as it is.
+    // The top bar's left text (the course name) and right text (the cohort); the bell stays as it is.
     setTopbar({ left, right }) {
       const bar = $(".topbar", root);
       bar.classList.add("is-titled");
@@ -323,7 +323,6 @@ function mountShell({ nav, backLink = null, user, profileHref = null }) {
       $(".today", root).textContent = right;
     },
     hideNav() { $("nav", side).hidden = true; }, // e.g. "course not found": nothing to navigate inside
-    showNav() { $("nav", side).hidden = false; },
     setActive(id) {
       $$("a[data-id]", side).forEach((a) => (a.dataset.id === id ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
       const cur = $(`a[data-id="${CSS.escape(id)}"]`, side);

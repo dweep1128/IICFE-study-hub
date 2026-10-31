@@ -4,7 +4,6 @@ const Hub = {
   courseId: new URLSearchParams(location.search).get("id") || "",
   user: null,
   title: "",
-  profile: null, // { profile, completion, needsOnboarding } from the server, or null if it could not be read
   manifest: null, // content manifest (Founder's Lab only for now), loaded before the first route
   cleanup: null,
   _hub: null,
@@ -98,13 +97,6 @@ async function route(isFirst = false) {
   Hub.cleanup?.();
   Hub.cleanup = null;
   document.title = `${labelOf(id)} · IICFE Study Hub`;
-  if (Hub.manifest && Hub.profile?.needsOnboarding) { // no portal until the startup name and one-line idea exist
-    shell.hideNav(); shell.setActive("");
-    const survey = document.createElement("div");
-    panel.replaceChildren(survey);
-    Hub.cleanup = mountOnboarding(survey, Hub, () => { shell.showNav(); route(); });
-    return;
-  }
   panel.innerHTML = skeleton();
 
   const el = document.createElement("div");
@@ -141,24 +133,16 @@ async function startHub() {
   if (!/^[\w-]{1,40}$/.test(Hub.courseId)) return showNotFound();
 
   try {
-    const [h, manifest, profile] = await Promise.all([
-      Hub.getHub(), Hub.courseId === Founders.COURSE_ID ? Founders.load() : null,
-      Hub.courseId === Founders.COURSE_ID ? api(`/api/courses/${Founders.COURSE_ID}/lab/profile`).catch((e) => { console.error("could not read the profile", e.message); return null; }) : null,
-    ]);
+    const [h, manifest] = await Promise.all([Hub.getHub(), Hub.courseId === Founders.COURSE_ID ? Founders.load() : null]);
     Hub.title = h.course.title;
     Hub.manifest = manifest;
-    Hub.profile = profile;
   } catch (e) {
     if (e.status === 404) return showNotFound();
     return shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
   }
 
   addEventListener("hashchange", () => route());
-  Hub.setProfile = (data) => { // after the survey or a profile save: the top bar shows the startup name
-    Hub.profile = data;
-    shell.setTopbar({ left: data.profile?.startupName || Hub.title, right: Hub.manifest?.cohortLabel ?? Hub.title });
-  };
-  Hub.setProfile(Hub.profile ?? { profile: null });
+  shell.setTopbar({ left: Hub.title, right: Hub.manifest?.cohortLabel ?? Hub.title }); // always the course name, whatever the profile holds
   Founders.watch(syncExamLock);
   if (Hub.manifest) {
     Founders.watch(drawJourneyWidget);
