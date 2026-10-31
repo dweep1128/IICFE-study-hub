@@ -1,14 +1,4 @@
-// Course Guide and Amigo panels. The Course Guide panel is rebuilt on the .accordion styles and the /guidance route.
-
-// ---------- course guide ----------
-Panels.guide = async (el, hub) => {
-  const items = await api(hub.url("guidance"));
-  el.innerHTML = head("Course Guide", "Course Guide", "How to get the most out of this course.") + (items.length
-    ? `<div class="accordion">${items.map((g, i) => `
-        <details${i === 0 ? " open" : ""}><summary>${esc(g.title)}</summary><div class="body">${paras(g.body)}</div></details>`).join("")}</div>`
-    : emptyState("No guide yet", "Your course guide will appear here once it's added.", icon("guide")));
-};
-
+// Amigo panel.
 // ---------- Amigo ----------
 // There is no chat backend wired up yet, so this is an honest "coming soon" page: no fake replies, no invented features.
 // The example questions come from the Study Notes and are not clickable.

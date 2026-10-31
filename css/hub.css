@@ -67,15 +67,6 @@
 }
 
 /* ---------- guide ---------- */
-.accordion { display: grid; gap: 12px; max-width: 820px; }
-.accordion details { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 0 22px; }
-.accordion details[open] { box-shadow: var(--shadow); }
-.accordion summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; font: 600 1.05rem var(--font-head); }
-.accordion summary::-webkit-details-marker { display: none; }
-.accordion summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: var(--gold); transition: transform .2s; }
-.accordion details[open] summary::after { transform: rotate(45deg); }
-.accordion .body { padding-bottom: 18px; color: var(--text-muted); }
-.accordion .body p { margin: 0 0 12px; }
 
 /* ---------- tabs ---------- */
 .tabs { display: flex; gap: 6px; padding: 5px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); width: fit-content; max-width: 100%; overflow-x: auto; }
@@ -192,16 +183,6 @@
 .hist td { padding: 12px; border-bottom: 1px solid var(--border); font-size: .92rem; }
 .scroll-x { overflow-x: auto; }
 
-/* ---------- exam ---------- */
-.exam-grid { display: grid; gap: 20px; }
-.exam-meta { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 20px 0; }
-.exam-meta dt { font: 500 .64rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
-.exam-meta dd { margin: 4px 0 0; font-weight: 600; }
-.count { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; max-width: 460px; }
-.count div { padding: 14px 6px; text-align: center; border-radius: 16px; background: var(--dark); color: var(--on-dark); }
-.count strong { display: block; font: 700 1.9rem/1 var(--font-head); font-variant-numeric: tabular-nums; }
-.count span { font: 500 .58rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--next-label); }
-.instr { color: var(--text-muted); } .instr p { margin: 0 0 10px; }
 /* ---------- Amigo (coming soon) ---------- */
 .am { max-width: 640px; margin: 0 auto; padding: 32px 0 0; text-align: center; }
 .am-avatar { display: grid; place-items: center; width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: var(--teal-tint); }
@@ -231,8 +212,6 @@
   .st-layout > .st-list { grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); overflow-x: auto; padding-bottom: 6px; }
 }
 @media (max-width: 480px) {
-  .count { gap: 6px; }
-  .count strong { font-size: 1.5rem; }
 }
 
 /* ---------- course shell (body.hub-page, set in js/hub/core.js) ---------- */
@@ -262,8 +241,8 @@
 .app.rail .nav-lock { position: absolute; top: 4px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
 .app.rail .nav-lock svg { width: 12px; height: 12px; }
 
-/* Reduced motion: no sliding, lifting or fading on the course hub's cards, buttons, accordion and drawer; state changes still show. */
+/* Reduced motion: no sliding, lifting or fading on the course hub's cards, buttons and drawer; state changes still show. */
 @media (prefers-reduced-motion: reduce) {
-  .round-btn, .vcard, .link-card, .opt, .accordion summary::after, .hub-page .side, .hub-page .side.open, .hub-page .scrim { transition: none; }
+  .round-btn, .vcard, .link-card, .opt, .hub-page .side, .hub-page .side.open, .hub-page .scrim { transition: none; }
   .round-btn:hover, .vcard:hover, .link-card:hover { transform: none; }
 }

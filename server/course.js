@@ -21,7 +21,6 @@ const CHAT_PER_MINUTE = 20;
 const today = () => new Date().toISOString().slice(0, 10);
 const round1 = (n) => Math.round(n * 10) / 10;
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const byNumber = (key) => (a, b) => (Number(a[key]) || 0) - (Number(b[key]) || 0); // used by guidance
 const isEnrolled = (t, sid, courseId) => !isHiddenCourse(courseId) && t.Enrollments.some((e) => e.studentId === sid && e.courseId === courseId);
 
 // "10:00 SGT" on 2026-11-18 -> epoch ms, or null when the sheet value isn't in a form we understand.
@@ -70,12 +69,6 @@ module.exports = function courseRouter({ requireLogin, secret }) {
       dues,
       nextAction: dues.find((d) => lower(d.priority) === "priority") ?? dues[0] ?? null,
     });
-  });
-
-  r.get("/courses/:id/guidance", async (req, res) => {
-    const { t, course } = await loadCourse(req, req.params.id, ["Guidance"]);
-    res.json(t.Guidance.filter((g) => g.courseId === course.courseId).sort(byNumber("order"))
-      .map((g) => ({ guideId: g.guideId, title: g.title, body: g.body, order: Number(g.order) || 0 })));
   });
 
   r.get("/courses/:id/resources", async (req, res) => {
