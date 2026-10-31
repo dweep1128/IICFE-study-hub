@@ -397,6 +397,32 @@ async function unlock(cookie) {
   assert.equal((await get(`${LAB}/sessions/2`, b)).json.submissions["Prototype photo"], undefined, "another student's upload is separate");
   assert.ok(!(await get(`${LAB}/journey`, a)).text.includes("s2|"), "session uploads are not journey proof");
 
+  // ---- video: embeddable links only, marking it watched is progress (never part of the exam gate) ----
+  const { parseVideo } = require("./sessions");
+  assert.deepEqual(parseVideo("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=9"), { provider: "youtube", embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" });
+  assert.deepEqual(parseVideo("https://youtu.be/dQw4w9WgXcQ"), { provider: "youtube", embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" });
+  assert.equal(parseVideo("https://vimeo.com/123456789").embedUrl, "https://player.vimeo.com/video/123456789");
+  assert.equal(parseVideo("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing").embedUrl, "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/preview");
+  for (const bad of ["", "http://youtu.be/dQw4w9WgXcQ", "https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "https://example.com/video.mp4"]) assert.equal(parseVideo(bad), null, bad);
+
+  assert.equal((await get(`${LAB}/sessions/2`, a)).json.video, null, "no link, no video");
+  assert.equal((await post(`${LAB}/sessions/2/video`, { watched: true }, a)).status, 404, "nothing to mark without a video");
+  assert.ok(!(await get(`${LAB}/sessions/2`, a)).json.steps.some((x) => x.key === "video"), "no video step without a video");
+  tabs.LabSessions[0].videoUrl = "https://youtu.be/dQw4w9WgXcQ";
+  tabs.LabSessions[0].videoTitle = "Lecture";
+  const v0 = (await get(`${LAB}/sessions/2`, a)).json;
+  assert.deepEqual(v0.video, { provider: "youtube", embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Lecture" });
+  assert.equal(v0.steps[0].key, "video");
+  assert.equal(v0.steps[0].done, false);
+  assert.equal((await post(`${LAB}/sessions/2/video`, { watched: "yes" }, a)).status, 400);
+  assert.equal((await post(`${LAB}/sessions/1/video`, { watched: true }, a)).status, 404, "session 1 has no video yet");
+  assert.equal((await post(`${LAB}/sessions/2/video`, { watched: true }, a)).status, 200);
+  assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[0].done, true);
+  assert.equal((await get(`${LAB}/sessions/2`, b)).json.steps[0].done, false, "another student's flag is separate");
+  assert.equal((await get(`${LAB}/sessions`, a)).json.sessions[1].steps[0].key, "video", "the card counts it too");
+  assert.equal((await post(`${LAB}/sessions/2/video`, { watched: false }, a)).status, 200);
+  assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[0].done, false, "it can be unmarked");
+
   // a Sheet row can hide a session again, and a session in the past is not "next"
   tabs.LabSessions[0].visible = "FALSE";
   assert.equal((await get(`${LAB}/sessions/2`, a)).status, 404);

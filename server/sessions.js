@@ -13,6 +13,34 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
 const isTrue = (v) => /^(true|yes|y|1|x|open)$/i.test(String(v ?? "").trim());
 const lines = (s) => String(s ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 const safeHttp = (v) => (/^https?:\/\//i.test(String(v ?? "").trim()) ? String(v).trim() : "");
+/**
+ * The embeddable form of a lecture link: { provider, embedUrl } for YouTube, Vimeo or a Google Drive file, else null.
+ * Only an id taken from the link is put into a fixed embed address, so nothing else from the Sheet reaches an iframe, and nothing autoplays.
+ */
+function parseVideo(raw) {
+  let u;
+  try { u = new URL(String(raw ?? "").trim()); } catch { return null; }
+  if (u.protocol !== "https:") return null;
+  const host = u.hostname.replace(/^(www|m)\./, "");
+  const seg = u.pathname.split("/").filter(Boolean);
+  const YT_ID = /^[\w-]{11}$/, NUM_ID = /^\d{6,12}$/, DRIVE_ID = /^[\w-]{10,80}$/;
+  if (host === "youtu.be" && YT_ID.test(seg[0] ?? "")) return { provider: "youtube", embedUrl: `https://www.youtube.com/embed/${seg[0]}` };
+  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    const id = seg[0] === "watch" ? u.searchParams.get("v") : ["embed", "shorts", "live", "v"].includes(seg[0]) ? seg[1] : null;
+    return YT_ID.test(id ?? "") ? { provider: "youtube", embedUrl: `https://www.youtube.com/embed/${id}` } : null;
+  }
+  if (host === "vimeo.com" || host === "player.vimeo.com") {
+    const id = seg.find((x) => NUM_ID.test(x));
+    const hash = host === "vimeo.com" ? seg[seg.indexOf(id) + 1] : u.searchParams.get("h"); // a private video's link carries a hash
+    return id ? { provider: "vimeo", embedUrl: `https://player.vimeo.com/video/${id}${/^[\da-f]{6,}$/i.test(hash ?? "") ? `?h=${hash}` : ""}` } : null;
+  }
+  if (host === "drive.google.com") {
+    const id = seg[0] === "file" && seg[1] === "d" ? seg[2] : u.searchParams.get("id");
+    return DRIVE_ID.test(id ?? "") ? { provider: "drive", embedUrl: `https://drive.google.com/file/d/${id}/preview` } : null;
+  }
+  return null;
+}
+
 const idOf = (no) => `s${no}`; // the manifest's id for session `no`, used for lab progress rows
 
 /** "YYYY-MM-DD" from an ISO date or any text Date can read ("1 Oct 2026"); "" for "TBD" and anything unreadable. */
@@ -56,7 +84,7 @@ function buildSessions(rows) {
     const no = Number(r.sessionNo);
     if (!Number.isInteger(no) || no < 1) continue;
     const cur = byNo.get(no) ?? { no };
-    for (const k of ["name", "phase", "date", "time", "duration", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots"]) {
+    for (const k of ["name", "phase", "date", "time", "duration", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"]) {
       if (String(r[k] ?? "").trim() !== "") cur[k] = String(r[k]);
     }
     if (String(r.visible ?? "").trim() !== "") cur.visible = isTrue(r.visible);
@@ -66,6 +94,7 @@ function buildSessions(rows) {
     no: s.no, name: s.name, phase: s.phase ?? "", date: s.date ?? "", time: s.time ?? "", duration: s.duration ?? "", visible: s.visible === true,
     readingUrl: safeHttp(s.readingUrl), activities: parseActivities(s.activities), instructions: String(s.instructions ?? "").trim(),
     outputs: lines(s.output), ...parseRecap(s.recap), slots: lines(s.uploadSlots), quiz: parseQuiz(s.quizJson),
+    video: parseVideo(s.videoUrl) && { ...parseVideo(s.videoUrl), title: String(s.videoTitle ?? "").trim() },
   }));
 }
 
@@ -80,6 +109,7 @@ function nextSession(sessions, today) {
 /** The steps a student can finish in a session, only those the session actually has: [{ key, label, done }]. */
 function stepsOf(s, state) {
   const steps = [];
+  if (s.video) steps.push({ key: "video", label: "video", done: state.videoWatched === true });
   if (s.outputs.length) steps.push({ key: "outputs", label: "outputs", done: s.outputs.every((_, i) => state.ticked.includes(i)) });
   if (state.native || s.quiz.length) steps.push({ key: "quiz", label: state.native ? "final exam" : "quiz", done: state.native ? state.examDone : state.quizAttempts > 0 });
   if (s.slots.length) steps.push({ key: "uploads", label: "uploads", done: state.uploadCount === s.slots.length, count: state.uploadCount, total: s.slots.length });
@@ -93,4 +123,4 @@ function gradeQuiz(quiz, answers) {
   return { score: review.filter((r) => r.chosen === r.correct).length, total: quiz.length, review };
 }
 
-module.exports = { buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, describe, PITCH_TIMER_SEED, QUIZ_LENGTH };
+module.exports = { parseVideo, buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, describe, PITCH_TIMER_SEED, QUIZ_LENGTH };

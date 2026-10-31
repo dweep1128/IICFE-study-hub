@@ -33,7 +33,8 @@ module.exports = {
     // The session timeline, kept by the programme team. A row overrides the defaults in founders-lab-sessions.json field by field;
     // sessions after the first stay "Coming soon" until visible = TRUE. Activities: "text | time" per line. Output and uploadSlots: one per line.
     // Recap: plain lines, then "- takeaway" lines. quizJson: [{ "q", "options": [4], "answer": 0-3, "explain" }] (up to 10; read by the server only).
-    LabSessions: ["sessionNo", "name", "phase", "date", "time", "duration", "visible", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots"],
+    LabSessions: ["sessionNo", "name", "phase", "date", "time", "duration", "visible", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"],
+    // videoUrl: a YouTube, Vimeo or Google Drive link (shown embedded, no autoplay); empty = "Video lecture coming soon".
     // One row per student, session and part (notes, activities, practice; ticks and quiz for sessions 2 and later).
     LabProgress: ["progressKey", "studentId", "courseId", "sessionId", "part", "stateJson", "updatedAt"],
     // One row per student and session: the Final Exam attempt (server clock, shuffle, draft, result and score slip).

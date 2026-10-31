@@ -41,6 +41,36 @@ async function mountTimeline(el) {
     <p class="tk-sub">Open a session for its activities, uploads, quiz and recap. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(sessions)}`;
 }
 
+// ---------- the video lecture ----------
+// The server sends an embed address only for YouTube, Vimeo or Google Drive links (server/sessions.js), with no autoplay. Without one: a calm placeholder.
+const PLAY = '<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>';
+function playerHtml(video, title) {
+  if (video) {
+    return `<div class="sd-frame"><iframe src="${esc(video.embedUrl)}" title="${esc(video.title || `Video lecture: ${title}`)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
+      allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+  }
+  return `<div class="sd-frame is-empty" role="img" aria-label="Video lecture coming soon"><div class="sd-ph"><span class="sd-ph-ic">${PLAY}</span>
+    <p class="sd-ph-t">Video lecture coming soon</p><p class="sd-ph-s">${esc(title)}</p></div></div>`;
+}
+// "Mark video as watched": a toggle saved on the server with the rest of the lab progress. Progress only; it is not part of the Final Exam gate.
+function mountVideoControl(host, st) {
+  if (!st.video) { host.innerHTML = ""; return noop; }
+  host.innerHTML = '<button type="button" class="sd-watch" aria-pressed="false"><span class="sd-watch-box" aria-hidden="true"></span><span data-t></span></button><span class="ss-err" role="alert" data-err></span>';
+  const btn = $(".sd-watch", host), err = $("[data-err]", host);
+  const draw = () => { btn.setAttribute("aria-pressed", String(st.videoWatched === true)); $("[data-t]", btn).textContent = st.videoWatched ? "Watched" : "Mark video as watched"; };
+  draw();
+  btn.addEventListener("click", async () => {
+    const next = !st.videoWatched;
+    btn.disabled = true; err.textContent = "";
+    st.videoWatched = next; draw(); // shown at once; put back if the server refuses
+    try { await api(sessionsApi(`/${st.no}/video`), { method: "POST", body: { watched: next } }); await st.reload().catch(() => {}); }
+    catch (ex) { st.videoWatched = !next; err.textContent = ex.message || "Could not save. Try again."; }
+    btn.disabled = false; draw(); st.changed();
+  });
+  const unwatch = st.watch(draw);
+  return { destroy: unwatch };
+}
+
 // ---------- state shared by one open session ----------
 // The server is the source of truth: after a tick, an upload or a quiz the steps are re-read from it.
 function makeSessionState(detail) {
@@ -51,7 +81,7 @@ function makeSessionState(detail) {
     changed: () => watchers.forEach((fn) => fn()),
     async reload() {
       const fresh = await api(sessionsApi(`/${detail.no}`));
-      Object.assign(state, { steps: fresh.steps, ticked: fresh.ticked, submissions: fresh.submissions, quizResult: fresh.quizResult });
+      Object.assign(state, { steps: fresh.steps, ticked: fresh.ticked, submissions: fresh.submissions, quizResult: fresh.quizResult, videoWatched: fresh.videoWatched });
       state.changed();
     },
   };
@@ -206,11 +236,13 @@ function mountGeneric(el, st, tab) {
   el.innerHTML = `<a class="tk-back" href="#sessions"><span aria-hidden="true">←</span> All sessions</a>
     <div class="ss-head"><div class="tk-badges"><p class="pt-eyebrow is-gold">Session ${st.no}</p>${st.phase ? `<span class="pt-tag is-active">${esc(st.phase)}</span>` : ""}</div>
       <h1 class="pt-h2">${esc(st.name)}</h1>${metaLine(st) ? `<p class="tk-sub">${esc(metaLine(st))}</p>` : ""}<div data-steps></div></div>
+    ${st.video ? `<div class="ss-video">${playerHtml(st.video, st.name)}<div class="sd-watch-row" data-video></div></div>` : ""}
     <nav class="ss-tabs" aria-label="Session sections"><ul role="tablist">${GENERIC_TABS.map((t) => `<li role="presentation"><a role="tab" href="#sessions/${st.no}/${t.id}" data-tab="${t.id}">${esc(t.label)}</a></li>`).join("")}</ul></nav>
     <div class="ss-panes">${GENERIC_TABS.map((t) => `<section role="tabpanel" data-pane="${t.id}" aria-label="${esc(t.label)}" hidden></section>`).join("")}</div>`;
   const drawSteps = () => { $("[data-steps]", el).innerHTML = stepBarHtml(st.steps); };
   drawSteps();
   const unwatch = st.watch(drawSteps);
+  const video = mountVideoControl($("[data-video]", el) ?? document.createElement("div"), st);
   const mounted = GENERIC_TABS.map((t) => t.mount($(`[data-pane="${t.id}"]`, el), st));
   const select = (id) => {
     const key = GENERIC_TABS.some((t) => t.id === id) ? id : GENERIC_TABS[0].id;
@@ -219,7 +251,7 @@ function mountGeneric(el, st, tab) {
   };
   select(tab);
   activeGeneric = { no: st.no, select };
-  return () => { unwatch(); mounted.forEach((m) => m.destroy()); activeGeneric = null; };
+  return () => { unwatch(); video.destroy(); mounted.forEach((m) => m.destroy()); activeGeneric = null; };
 }
 
 // ---------- the panel ----------

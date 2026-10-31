@@ -319,9 +319,10 @@ module.exports = function labRouter({ requireLogin }) {
     const exam = native && t.LabExamAttempts.find((a) => a.attemptKey === attemptKey(sid, native.id));
     const quiz = stateOf(t, sid, sessionsLib.idOf(s.no), "quiz");
     const ticked = stateOf(t, sid, sessionsLib.idOf(s.no), "ticks")?.ticked ?? [];
+    const videoWatched = stateOf(t, sid, sessionsLib.idOf(s.no), "video")?.watched === true;
     const uploadCount = s.slots.filter((slot) => subs[slot] && submissions.counts(subs[slot])).length;
-    const steps = sessionsLib.stepsOf(s, { ticked, native: !!native, examDone: !!exam?.submittedAt, quizAttempts: quiz?.attempts ?? 0, uploadCount });
-    return { native, subs, ticked, quiz, steps, exam };
+    const steps = sessionsLib.stepsOf(s, { ticked, native: !!native, examDone: !!exam?.submittedAt, quizAttempts: quiz?.attempts ?? 0, uploadCount, videoWatched });
+    return { native, subs, ticked, quiz, steps, exam, videoWatched };
   }
 
   function sessionCards(t, sid) {
@@ -351,6 +352,7 @@ module.exports = function labRouter({ requireLogin }) {
     res.json({
       no: s.no, sessionId: sessionsLib.idOf(s.no), native: !!st.native, name: s.name, phase: s.phase, date: s.date, time: s.time, duration: s.duration, readingUrl: s.readingUrl,
       activities: s.activities, instructions: s.instructions, outputs: s.outputs, recap: s.recap, takeaways: s.takeaways, uploadSlots: s.slots,
+      video: s.video, videoWatched: st.videoWatched,
       quiz: s.quiz.map(({ q, options }) => ({ q, options })), ticked: st.ticked, submissions: st.subs, steps: st.steps,
       quizResult: st.quiz ? { bestScore: st.quiz.best, attempts: st.quiz.attempts } : null, hasPitchTimer: sessionsLib.PITCH_TIMER_SEED.test(s.instructions),
     });
@@ -367,6 +369,17 @@ module.exports = function labRouter({ requireLogin }) {
     const ticked = [...new Set(raw)].sort((a, b) => a - b);
     await saveState(req.user.studentId, sessionsLib.idOf(no), "ticks", { ticked });
     res.json({ ok: true, ticked });
+  }));
+
+  // Body: { watched: boolean }. Only a session that has a video can be marked. This is progress only: it is not part of the Final Exam gate.
+  r.post("/sessions/:no/video", route(async (req, res) => {
+    const no = sessionNo(req);
+    const t = await load(req, [SESSIONS_TAB]);
+    const s = no ? sessionFor(t, no) : null;
+    if (!s?.visible || !s.video) throw httpError(404, NOT_AVAILABLE);
+    if (typeof req.body?.watched !== "boolean") throw httpError(400, "Invalid request.");
+    await saveState(req.user.studentId, sessionsLib.idOf(no), "video", { watched: req.body.watched });
+    res.json({ ok: true, watched: req.body.watched });
   }));
 
   // Body: { answers: [option index or -1, ...] }. The answer key lives in the Sheet row and only leaves with the graded result.

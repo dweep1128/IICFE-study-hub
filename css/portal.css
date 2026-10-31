@@ -422,3 +422,82 @@ button.jr-box:focus-visible { outline: var(--focus-w) solid var(--gold); outline
 .ss-review p { margin: 8px 0 0; font-size: .875rem; }
 .ss-review .is-ok { color: var(--success); }
 .ss-review .is-bad { color: var(--danger); }
+
+/* ======================================================================
+   Session 1's page, laid out like a course player: video, tabs, and the "Session content" list
+   ====================================================================== */
+.sd { padding: 24px clamp(16px, 3vw, 40px) 56px; }
+.sd-grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "player" "tabs" "side" "content"; column-gap: 32px; margin-top: 16px; }
+.sd-player { grid-area: player; min-width: 0; }
+.sd-tabs { grid-area: tabs; margin-top: 24px; margin-bottom: 0; }
+.sd-side { grid-area: side; min-width: 0; margin-top: 24px; }
+.sd-content { grid-area: content; min-width: 0; padding-top: 28px; }
+.sd-content > .rs-sub:empty { display: none; }
+.sd-content .rs-sub { margin: 0 0 20px; }
+
+.sd-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 16px; background: var(--next-bg); }
+.sd-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.sd-frame.is-empty { display: grid; place-items: center; border: 1px solid var(--border); background: var(--surface-2); }
+.sd-ph { display: grid; justify-items: center; gap: 8px; padding: 24px; text-align: center; }
+.sd-ph-ic { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--gold-tint); color: var(--gold); }
+.sd-ph-t { margin: 8px 0 0; font: 700 1.25rem var(--font-head); color: var(--text); }
+.sd-ph-s { margin: 0; max-width: 40ch; font-size: .9375rem; color: var(--text-muted); }
+
+.sd-info { margin-top: 20px; }
+.sd-info h1 { font-size: clamp(1.75rem, 3vw, 2.25rem); }
+.sd-watch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
+.sd-watch-row:empty { display: none; }
+.sd-watch { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: 600 .875rem var(--font-body); cursor: pointer; transition: border-color .2s; }
+.sd-watch:hover { border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.sd-watch:disabled { opacity: .6; cursor: progress; }
+.sd-watch-box { display: grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid var(--text-muted); border-radius: 50%; }
+.sd-watch[aria-pressed="true"] { border-color: var(--teal); }
+.ss-video { margin-top: 20px; }
+.ss-video .sd-watch-row { margin-top: 12px; }
+
+/* the content list */
+.sd-cur { border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
+.sd-cur > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; font: 700 1rem var(--font-head); cursor: pointer; list-style: none; }
+.sd-cur > summary::-webkit-details-marker { display: none; }
+.sd-cur > summary b { margin-left: auto; font: 600 .875rem var(--mono); color: var(--gold); }
+.sd-cur > summary::after { content: "▾"; color: var(--gold); }
+.sd-cur[open] > summary::after { content: "▴"; }
+.sd-cur > .nt-track { margin: 0 20px; }
+.sd-secs { display: grid; gap: 4px; padding: 8px 8px 12px; }
+.sd-sec { padding: 12px; }
+.sd-sec + .sd-sec { border-top: 1px solid var(--border); }
+.sd-sec:empty { display: none; }
+.sd-sec .toc-list { margin-top: 12px; }
+.sd-sec .nt-track { margin-top: 4px; }
+.sd-sub { display: block; margin-top: 2px; color: var(--text-muted); font-size: .75rem; font-weight: 400; }
+.toc-item:disabled { cursor: default; opacity: .65; }
+.toc-item:disabled:hover { background: none; }
+.toc-item.is-locked .toc-n { border-style: dashed; }
+.toc-item.is-locked .toc-n svg { width: 13px; height: 13px; }
+.sd-lock { margin: 4px 12px 0 48px; font-size: .8125rem; line-height: 1.5; color: var(--text-muted); }
+
+/* beside the lesson from 1000px; under it the player, tabs and content list come in that order, the list as a drawer */
+@container rs (min-width: 1000px) {
+  .sd-grid { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "player side" "tabs side" "content side"; align-items: start; }
+  .sd-side { position: sticky; top: calc(var(--top-h, 64px) + 16px); align-self: start; margin-top: 0; max-height: calc(100dvh - var(--top-h, 64px) - 32px); overflow-y: auto; }
+  .sd-cur > summary { pointer-events: none; }
+  .sd-cur > summary::after { content: none; }
+}
+/* the old in-page "Contents" dropdowns are replaced by the list in the right-hand panel */
+.sd .nt-toc-m { display: none !important; }
+
+.sd-ov { display: grid; gap: 40px; max-width: 760px; }
+.sd-ov h2 { margin: 0 0 12px; font: 700 1.25rem var(--font-head); }
+.sd-lead { margin: 0; font-size: 1.0625rem; line-height: 1.65; color: var(--text); }
+.sd-facts { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 20px 0 0; padding: 0; }
+.sd-facts dt { font: 600 .625rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+.sd-facts dd { margin: 2px 0 0; font-size: .9375rem; }
+.sd-learn { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.sd-learn li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; line-height: 1.55; }
+.sd-learn li > span:first-child { display: grid; place-items: center; height: 1.55em; color: var(--teal); }
+.sd-learn svg { width: 16px; height: 16px; }
+.sd-ov .ss-prog { max-width: 360px; }
+
+@media (prefers-reduced-motion: reduce) { .sd-watch { transition: none; } }
+.sd-watch[aria-pressed="true"] .sd-watch-box { border-color: var(--teal); background: var(--teal); color: var(--on-teal); }
+.sd-watch[aria-pressed="true"] .sd-watch-box::after { content: "✓"; font: 700 .6875rem/1 var(--font-body); }
