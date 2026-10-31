@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const sheets = require("./sheets");
 const createCourseRouter = require("./course");
+const createLabRouter = require("./lab");
 const { lower, toTime, safeUrl, progressFor, isHiddenCourse, isHiddenWebinar, isHiddenPayment } = require("./util");
 
 const ROOT = path.join(__dirname, "..");
@@ -50,7 +51,7 @@ app.use("/api", express.json({ limit: BODY_LIMIT }), cookieParser(), (req, res, 
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
+app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: Number(process.env.API_MAX_REQUESTS) || API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
@@ -173,6 +174,7 @@ app.get("/api/workspace", requireLogin, async (req, res) => {
 });
 
 // Mounted after the public routes above: everything in here requires a login.
+app.use("/api/courses/:id/lab", createLabRouter({ requireLogin }));
 app.use("/api", createCourseRouter({ requireLogin, secret: SECRET }));
 
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
@@ -182,25 +184,13 @@ app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 const PAGES = ["index", "courses", "course", "signin", "workspace"];
 app.get("/", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
 for (const p of PAGES) app.get([`/${p}`, `/${p}.html`], (req, res) => res.sendFile(path.join(ROOT, `${p}.html`)));
-// Partner-branded Founder's Lab pages: self-contained (inline CSS/JS, data: logos, Google Fonts) and framed by our own
-// course viewer. These relaxed headers apply to this folder ONLY; the rest of the site keeps the defaults.
-app.use("/content/founders-lab", (req, res, next) => {
-  res.set({
-    "Content-Security-Policy": [
-      "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:", "img-src 'self' data:", "frame-ancestors 'self'",
-    ].join("; "),
-    "X-Frame-Options": "SAMEORIGIN",
-  });
-  next();
-});
 for (const dir of ["css", "js", "assets", "content"]) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { dotfiles: "ignore" }));
 
 // ---------- errors ----------
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
-  // httpError()s and body-parser errors carry a client-safe 4xx; everything else becomes a generic 500.
-  if (err.expose && err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });
+  // httpError()s and body-parser errors carry a client-safe 4xx (or a deliberate 503 "try again"); everything else becomes a generic 500.
+  if (err.expose && err.status >= 400 && err.status < 600) return res.status(err.status).json({ error: err.message });
   if (err.status === 400) return res.status(400).json({ error: "Bad request." });
   // Log the message only: Google errors can carry request details, never the key.
   console.error(`[${req.method} ${req.path}]`, err.code ?? "", err.message);

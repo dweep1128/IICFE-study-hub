@@ -1,110 +1,113 @@
-// Overview + the "Coming soon" tabs. Sessions from content/founders-lab/manifest.json are the course's modules.
+// Overview: the Founder's Lab portal's home page (greeting, journey card with the 7-stage rail, Next action, Next session, Recent activity,
+// Quick access, footer strip). Everything about the journey comes from the server (Founders.journey()): this file only draws it.
 const CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
-const DESC_CLAMP_LINES = 3;
-const stepLink = (hub, session, item) => Founders.hash(hub.manifest, session.id, item.key);
+const QUICK_ACCESS = [
+  { href: "#toolkit", icon: "pBook", title: "Toolkit", subtitle: "Guides for founders" },
+  { href: "#sessions", icon: "pCalendar", title: "Sessions", subtitle: "Upcoming & past sessions" },
+  { href: "#journey", icon: "pCompass", title: "My Journey", subtitle: "Stages and checklist" },
+];
+const TAGLINE = "Learn . Build . Connect . Launch";
+const QUOTE = "“Small steps build big companies.”";
+const HALF_STAGE = 0.5; // the gold line ends in the middle of the current stage's node
 
-// Status line under a step in the journey list: a real score once the Final Exam is submitted.
-function stepStatus(item, isNext, gate) {
-  if (item.key === "real-test" && gate.locked) return "Locked";
-  if (item.score) return `Score ${item.score.score}/${item.score.total}`;
-  if (item.done) return "Done";
-  return isNext ? "Up next" : item.started ? "In progress" : "Not started";
+// Hero art: a climber on a sun, drawn only with theme tokens (the old portal's palette mapped to Study Hub's).
+const HERO_ART = `<svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="pt-sun" cx="50%" cy="42%" r="60%">
+  <stop offset="0%" style="stop-color:var(--surface-2)"/><stop offset="55%" style="stop-color:var(--gold)"/><stop offset="100%" style="stop-color:var(--gold-dark)"/></radialGradient></defs>
+  <rect width="100" height="100" fill="url(#pt-sun)"/>
+  <path d="M0 78 L16 54 L28 66 L44 38 L58 58 L72 46 L100 80 L100 100 L0 100 Z" style="fill:var(--next-bg)" opacity="0.28"/>
+  <path d="M22 100 L46 52 L54 62 L68 40 L100 100 Z" style="fill:var(--next-bg)"/>
+  <g style="fill:var(--next-bg)"><rect x="63" y="34" width="4.5" height="6" rx="1" transform="rotate(18 63 34)"/><circle cx="68.5" cy="34.5" r="3"/><path d="M65.5 37 Q68.5 41 71 38 L74 47 Q69 51 64 48 Z"/>
+  <path d="M65 46 L62 54 M70 46 L73 54" style="stroke:var(--next-bg)" stroke-width="2" stroke-linecap="round"/></g></svg>`;
+
+const ic = (name) => `<span aria-hidden="true">${icon(name)}</span>`;
+const stageWord = { done: "Complete", current: "In progress", locked: "Upcoming" };
+
+function dateParts(iso) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  const part = (o) => d.toLocaleDateString("en-GB", { ...o, timeZone: "UTC" });
+  return { month: part({ month: "short" }).toUpperCase(), day: d.getUTCDate(), weekday: part({ weekday: "short" }).toUpperCase() };
 }
 
-function overviewHtml(hub, d, sum) {
-  const { next } = sum;
-  // When every session is finished the journey keeps showing the last one instead of going blank.
-  const session = sum.current ?? sum.sessions.at(-1);
-  const nextHref = next ? stepLink(hub, next.session, next.item) : stepLink(hub, session, session.items[0]);
-  const action = next ? { label: "Continue learning", href: nextHref } : { label: "Review course", href: nextHref };
-  const status = next ? `Session ${next.session.no} ${next.session.started ? "in progress" : "up next"}` : `All ${sum.sessionsTotal} sessions complete`;
-  const nextItemKey = next?.item.key;
+// The rail: a hairline with a gold line grown to the current stage, one round node per stage.
+function railHtml(stages) {
+  const completed = stages.filter((s) => s.status === "done").length;
+  const currentIdx = stages.findIndex((s) => s.status === "current");
+  const progress = currentIdx === -1 ? completed / stages.length : (currentIdx + HALF_STAGE) / stages.length;
+  return `<div class="pt-rail"><div class="pt-rail-line"></div><div class="pt-rail-fill" style="transform:scaleX(${progress})"></div>
+    <ol>${stages.map((s) => `<li class="${s.status === "locked" ? "" : "is-reached"} ${s.status === "current" ? "is-current" : ""}"${s.status === "current" ? ' aria-current="step"' : ""}>
+      <span class="pt-node">${ic("pCheck")}</span><b>${esc(s.label)}</b><small>${stageWord[s.status]}</small></li>`).join("")}</ol></div>`;
+}
 
-  return greetingBand({ name: hub.user.name, status, percent: sum.percent, action }) + `
-    <section class="ov-grid">
-      <article class="hub-card" aria-labelledby="jt">
-        <p class="mono-label" id="jt">Your journey</p>
-        <div class="journey-top"><p><strong>${sum.sessionsDone}</strong> of ${sum.sessionsTotal} sessions complete</p></div>
-        <div class="journey-cur"><div><h3>Session ${session.no}: ${esc(session.title)}</h3><p>${session.doneCount} of ${session.total} steps complete</p></div>
-          <a class="btn-pill" href="${esc(nextHref)}">Open module <span class="arrow" aria-hidden="true">→</span></a></div>
-        <ol class="stepper" style="--cols:${session.items.length}" aria-label="Session ${session.no} steps">${session.items.map((it, i) => {
-          const cls = it.done ? "complete" : it.key === nextItemKey && session === next?.session ? "in_progress" : "upcoming";
-          return `<li class="${cls}">
-            <span class="step-dot">${it.done ? CHECK : i + 1}</span>
-            <span class="step-title">${esc(it.label)}</span>
-            <span class="step-status">${esc(stepStatus(it, cls === "in_progress", session.gate))}</span>
-          </li>`;
-        }).join("")}</ol>
-      </article>
+function overviewHtml(hub, j, nextSession) {
+  const current = j.stages.find((s) => s.id === j.currentId);
+  const first = String(hub.user.name).trim().split(/\s+/)[0];
+  const na = j.nextAction;
+  const when = nextSession?.date ? dateParts(nextSession.date) : null;
+  return `
+    <header class="pt-hero">
+      <div><h1 class="pt-h1">${esc(timeGreeting())}${first ? `, ${esc(first)}` : ""}.</h1><p class="pt-sub">Keep building. You’re making progress.</p></div>
+      <div class="pt-hero-side"><p class="pt-quote">${esc(QUOTE)}</p><div class="pt-art">${HERO_ART}</div></div>
+    </header>
 
-      <article class="next-card" aria-labelledby="na">
-        <p class="mono-label" id="na">Next action</p>
-        ${next ? `
-          <h2>${esc(next.item.label)}</h2>
-          <p class="meta">Session ${next.session.no} · ${esc(next.session.title)}</p>
-          ${next.hint ? `<p class="meta">${esc(next.hint)}</p>` : ""}
-          <div class="next-foot"><span></span><a class="round-btn" href="${esc(nextHref)}" aria-label="Go to ${esc(next.item.label)}"><span aria-hidden="true">→</span></a></div>`
-        : '<h2>All caught up</h2><p class="empty-note">Every session is complete.</p>'}
-      </article>
+    <div class="pt-grid">
+      <section class="pt-card" aria-labelledby="pt-j">
+        <div class="pt-head"><h2 class="pt-eyebrow" id="pt-j">Your journey</h2>
+          <div class="pt-right"><span>${j.doneStages} of ${j.totalStages} stages complete</span><span class="pt-pct">${j.percent}%</span></div></div>
+        <div class="pt-cur"><div><p class="pt-cur-name">${esc(current.label)}</p>
+            <p class="pt-cur-sub">${current.completion.doneCount} of ${current.completion.totalCount} compulsory items done.</p></div>
+          <a class="pt-ghost" href="#journey">View details ${ic("pArrow")}</a></div>
+        ${railHtml(j.stages)}
+      </section>
+
+      <section class="pt-next" aria-labelledby="pt-n">
+        <div><div class="pt-next-top"><h2 class="pt-eyebrow" id="pt-n">Next action</h2><span class="pt-pill">Priority</span></div>
+          <h3>${esc(na ? na.label : "All caught up for this stage.")}</h3>
+          <p>${esc(na ? na.hint : "Nothing compulsory left open right now. Nice work.")}</p></div>
+        <div class="pt-next-foot"><span>${esc(current.label)}</span><a class="pt-round" href="#journey" aria-label="Open My Journey">${ic("pArrow")}</a></div>
+      </section>
+    </div>
+
+    <div class="pt-two">
+      <section class="pt-card" aria-labelledby="pt-s">
+        <div class="pt-line"><h2 class="pt-eyebrow" id="pt-s">Next session</h2><a class="pt-link" href="#sessions">View all ${ic("pChevron")}</a></div>
+        ${nextSession ? `<div class="pt-session">${when ? `<div class="pt-date"><small>${when.month}</small><b>${when.day}</b><em>${when.weekday}</em></div>` : ""}
+          <p><span class="t">${esc(nextSession.topic)}</span>${nextSession.time ? `<span class="m" style="display:block">${esc(nextSession.time)}</span>` : ""}</p></div>`
+        : '<p class="pt-none">No upcoming sessions scheduled.</p>'}
+      </section>
+
+      <section class="pt-card" aria-labelledby="pt-a">
+        <h2 class="pt-eyebrow" id="pt-a">Recent activity</h2>
+        <ul class="pt-acts">${j.activity.length ? j.activity.map((a) => `
+          <li><span class="pt-act-ic">${ic("pCheck")}</span><p><span class="t" style="display:block">${esc(a.title)}</span>${a.date ? `<span class="d">${esc(fmtShort(a.date))}</span>` : ""}</p></li>`).join("")
+          : '<li class="pt-none" style="margin:0">Nothing yet. Items you complete show up here.</li>'}</ul>
+      </section>
+    </div>
+
+    <section class="pt-quick" aria-labelledby="pt-q">
+      <div class="pt-line"><h2 class="pt-eyebrow" id="pt-q">Quick access</h2><span class="note">Everything you need, in one place.</span></div>
+      <ul>${QUICK_ACCESS.map((q) => `<li><a class="pt-qcard" href="${q.href}"><span class="pt-qic">${ic(q.icon)}</span>
+        <span class="pt-qtxt"><b>${esc(q.title)}</b><span>${esc(q.subtitle)}</span></span><span class="pt-qarrow">${ic("pArrow")}</span></a></li>`).join("")}</ul>
     </section>
 
-    <section class="ov-cards">
-      <article class="hub-card"><h3>Course description</h3>
-        <p class="desc" id="ov-desc">${esc(d.course.description || "No description yet.")}</p>
-        <button class="read-more" type="button" aria-expanded="false" aria-controls="ov-desc" hidden>Read more</button>
-      </article>
-      <article class="hub-card"><h3>Modules completed</h3>
-        <p class="big-num">${sum.sessionsDone}<small> / ${sum.sessionsTotal} sessions</small></p>
-        <div class="bar" role="progressbar" aria-label="Sessions completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${sum.sessionsTotal ? Math.round((sum.sessionsDone / sum.sessionsTotal) * 100) : 0}"><i style="width:${sum.sessionsTotal ? (sum.sessionsDone / sum.sessionsTotal) * 100 : 0}%"></i></div>
-      </article>
-      <article class="hub-card"><h3>Steps completed</h3>
-        <p class="big-num">${sum.doneSteps}<small> / ${sum.totalSteps} steps</small></p>
-        <div class="bar" role="progressbar" aria-label="Steps completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${sum.percent}"><i style="width:${sum.percent}%"></i></div>
-      </article>
-      ${d.dues.length ? `<article class="hub-card"><h3>What's due</h3>
-        <ul class="due-list">${d.dues.map((x) => `
-          <li><span class="t">${esc(x.title)}</span><span class="row"><span class="chip">${esc(x.type)}</span><time datetime="${esc(x.dueDate)}">${esc(fmtDate(x.dueDate))}</time></span></li>`).join("")}</ul>
-      </article>` : ""}
-    </section>`;
+    <div class="pt-foot"><p class="tag">${esc(TAGLINE)}</p><div><p class="co">${esc(hub.manifest?.cohortLabel ?? hub.title)}</p><div class="rule"></div></div></div>`;
 }
 
 Panels.overview = async (el, hub) => {
-  const d = await hub.getHub();
   if (!hub.manifest) {
+    const d = await hub.getHub();
     el.innerHTML = head("Overview", d.course.title, d.course.description || "") + emptyState("Coming soon", "Sessions for this course will appear here.", icon("overview"));
     return;
   }
-  const draw = () => {
-    el.innerHTML = overviewHtml(hub, d, Founders.summary(hub.manifest));
-    // "Read more" only when the description is actually cut off by the 3-line clamp.
-    const desc = $("#ov-desc", el);
-    const more = $(".read-more", el);
-    if (desc.scrollHeight > desc.clientHeight + 1) more.hidden = false;
-    more.addEventListener("click", () => {
-      const open = more.getAttribute("aria-expanded") !== "true";
-      more.setAttribute("aria-expanded", open);
-      more.textContent = open ? "Show less" : "Read more";
-      desc.classList.toggle("open", open);
-    });
-  };
+  const j = await Founders.journey(true); // fresh each visit; a failure falls through to the router's error box with Retry
+  el.className = "pt-page pt-stagger";
+  // The next visible session dated today or later, worked out by the server from the Sessions list. A failure just shows "no upcoming sessions".
+  const nextSession = await api(`/api/courses/${Founders.COURSE_ID}/lab/sessions`).then((r) => r.next && { topic: r.next.name, date: r.next.date, time: r.next.time }).catch(() => null);
+  let shown = j;
+  const draw = () => { el.innerHTML = overviewHtml(hub, shown, nextSession); };
   draw();
-  return Founders.watch(() => { if (el.isConnected) draw(); });
+  // Redraw only when the journey itself changed (other progress events, like a focus refresh, must not replay the entrance animation).
+  return Founders.watch(() => { const now = Founders.journeyNow(); if (el.isConnected && now && now !== shown) { shown = now; draw(); } });
 };
 
 // ---------- tabs with no content yet ----------
 const head = (label, title, sub) => `<div class="panel-head"><p class="mono-label">${esc(label)}</p><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ""}</div>`;
-// resources / mock / final only land here for a course without a content manifest (otherwise the native views handle them).
-const COMING_SOON = {
-  resources: { label: "Resources", sub: "Study notes and activities for this course.", icon: "resources" },
-  mock: { label: "Mock Tests", sub: "Practice tests for this course.", icon: "mock" },
-  final: { label: "Final Exam", sub: "Your final assessment for this course.", icon: "exam" },
-  guide: { label: "Course Guide", sub: "How to get the most out of this course.", icon: "guide" },
-  documents: { label: "Documents", sub: "Syllabus, guides and templates for this course.", icon: "documents" },
-  certificate: { label: "Certificate", sub: "Your proof of completion for this course.", icon: "certificate" },
-  amigo: { label: "Amigo", sub: "Your study buddy for Founder's Lab.", icon: "chatbot" },
-};
-for (const [id, c] of Object.entries(COMING_SOON)) {
-  Panels[id] = async (el) => {
-    el.innerHTML = head(c.label, c.label, c.sub) + emptyState("Coming soon", `${c.label} isn't available for this course yet.`, icon(c.icon));
-  };
-}

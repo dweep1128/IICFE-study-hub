@@ -189,27 +189,17 @@ const login = async (email, password = email.startsWith("other") ? OTHER_PW : PW
   assert.deepEqual(hub.dues.map((d) => d.dueId), ["D2", "D1"]); // sorted by date
   assert.equal(hub.nextAction.dueId, "D2"); // the Priority one
   assert.equal((await get("/api/courses/C002/hub", cookie)).status, 404, "not enrolled -> 404");
-  assert.equal((await get("/api/courses/C002/guidance", cookie)).status, 404);
   assert.equal((await get("/api/courses/..%2F..%2Fx/hub", cookie)).status, 404);
   assert.equal((await get("/api/courses/C100/hub", other)).status, 404, "other student not enrolled in C100");
 
-  // ---- resources / documents / exam / guidance ----
+  // ---- resources / exam ----
   const res = await (await get("/api/courses/C100/resources", cookie)).json();
   assert.deepEqual(res.find((x) => x.resourceId === "R1").paragraphs.length, 2);
   assert.equal(res.find((x) => x.resourceId === "R3").url, "", "unsafe video url stripped");
   assert.ok(!res.some((x) => x.resourceId === "R2"));
-  assert.equal((await (await get("/api/courses/C100/documents", cookie)).json()).length, 1);
-  assert.equal((await (await get("/api/courses/C100/guidance", cookie)).json()).length, 1);
   const exam = await (await get("/api/courses/C100/exam", cookie)).json();
   assert.equal(exam.canStart, false);
   assert.ok(exam.startsAt);
-
-  // ---- certificate: locked ----
-  const cert = await (await get("/api/courses/C100/certificate", cookie)).json();
-  assert.equal(cert.eligible, false);
-  assert.equal(cert.certificate, null);
-  assert.deepEqual(cert.conditions.map((c) => c.met), [false, false]);
-  assert.equal(cert.progress, 25);
 
   // ---- highlights ----
   const goodHl = { resourceId: "R1", paragraphIndex: 0, startOffset: 0, endOffset: 5, text: "First", color: "yellow", note: "remember" };

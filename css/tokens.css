@@ -32,6 +32,7 @@
   --danger-ink: #7A2315;
   --success: #1F7A55;
 
+  --mask-solid: #000;         /* opaque stop of an alpha mask: only its transparency is used, never its colour */
   --dark: #0B1512;            /* inverse chips: timer, countdown, video header */
   --on-dark: #FFFFFF;
   --next-bg: #0B1512;         /* the "Next action" card */
@@ -59,10 +60,6 @@
 
   --hl-yellow: #FBE9A6; --hl-green: #BFE8D2; --hl-pink: #F8CDDA;
   --sw-yellow: #F5D547; --sw-green: #5CC592; --sw-pink: #F08BAA;
-  --ft-pdf-bg: #F7DAD3; --ft-pdf: #A5321F;
-  --ft-doc-bg: #DCE8F8; --ft-doc: #2B5BA6;
-  --ft-xls-bg: #D9EFE1; --ft-xls: #1F6B40;
-  --ft-ppt-bg: #FBE6D2; --ft-ppt: #A24F12;
 
   /* Six Thinking Hats: a tinted surface plus the text on it (each pair is AA, 4.5:1 or better). */
   --hat-white-bg: #FFFFFF; --hat-white-fg: #12261F;
@@ -128,10 +125,6 @@
   --frame-radius: 14px;
 
   --hl-yellow: #6B5A1C; --hl-green: #1F5A3F; --hl-pink: #6B2A40;
-  --ft-pdf-bg: rgba(229, 134, 111, .18); --ft-pdf: #F0A491;
-  --ft-doc-bg: rgba(110, 160, 235, .18); --ft-doc: #9DBFF2;
-  --ft-xls-bg: rgba(92, 196, 154, .18); --ft-xls: #7FD8B2;
-  --ft-ppt-bg: rgba(240, 150, 80, .18); --ft-ppt: #F2B27F;
 
   --hat-white-bg: #E9F0EF; --hat-white-fg: #0C1516;
   --hat-red-bg: #4A2620; --hat-red-fg: #FFD9D1;
@@ -147,11 +140,6 @@
   .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
     transition: background-color .15s, color .15s, border-color .15s, fill .15s, stroke .15s !important;
   }
-}
-
-/* The certificate is a "printed page": it stays light in both themes (the themed frame around it follows the theme). */
-:root, :root[data-theme="dark"] {
-  --paper: #FFFDF8; --paper-edge: #F7F1E6; --paper-ink: #12261F; --paper-muted: #55645E; --paper-gold: #8A6020;
 }
 
 /* Theme previews on the Settings page always show their own palette, whichever theme is active. */

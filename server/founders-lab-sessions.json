@@ -1,0 +1,17 @@
+{
+  "_note": "Defaults for the session timeline. A row in the LabSessions Sheet tab with the same sessionNo overrides any field it fills in; sessions after the first stay locked (Coming soon) until their row has visible = TRUE. Session 1 is the native one: its title, date and time come from content/founders-lab/s1/session.json.",
+  "sessions": [
+    { "no": 1, "phase": "Foundation", "visible": true },
+    { "no": 2, "name": "Design Thinking", "phase": "Foundation" },
+    { "no": 3, "name": "Validating & Refining Ideas", "phase": "Build" },
+    { "no": 4, "name": "Mentorship Clinic", "phase": "Build" },
+    { "no": 5, "name": "Decode the Market" },
+    { "no": 6, "name": "Startup Ecosystem" },
+    { "no": 7, "name": "Product-Market Fit" },
+    { "no": 8, "name": "Digital & Social Media Marketing" },
+    { "no": 9, "name": "Know Your Competition" },
+    { "no": 10, "name": "Financials & Valuations" },
+    { "no": 11, "name": "Pitch & Lead + Shark Tank Prep" },
+    { "no": 12, "name": "Bespoke Mentoring" }
+  ]
+}

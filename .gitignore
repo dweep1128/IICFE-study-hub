@@ -7,3 +7,7 @@ dist/
 build/
 .DS_Store
 Thumbs.db
+
+# Local-only handoff material (never committed)
+FOUNDERS_LAB_PORT_SPEC*.md
+founders-lab-export/

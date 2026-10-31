@@ -1,6 +1,6 @@
 /* Course hub content only (course.html). Shell, greeting, cards, pills, tables and skeletons live in app.css. */
 /* ---------- overview ---------- */
-.ov-grid { display: grid; gap: 24px; grid-template-columns: 1fr; align-items: start; margin-bottom: 40px; }
+.ov-grid { display: grid; gap: 32px; grid-template-columns: 1fr; align-items: start; margin-bottom: 48px; }
 .next-card { order: -1; } /* mobile order: greeting, Next action, Your journey, cards */
 .journey-top { margin-bottom: 20px; }
 .journey-top p { margin: 0; color: var(--text-muted); font-size: 1rem; }
@@ -32,10 +32,10 @@
 .round-btn:hover { transform: translateX(4px); background: var(--next-hover); }
 .next-card .empty-note { color: var(--next-muted); margin: 0; }
 
-.ov-cards { display: grid; gap: 24px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+.ov-cards { display: grid; gap: 32px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
 .ov-cards h3 { margin-bottom: 14px; font: 500 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
 .ov-cards p { margin: 0; color: var(--text-muted); }
-.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; font-size: .95rem; }
+.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: .95rem; }
 .desc.open { display: block; }
 .read-more { margin-top: 10px; padding: 0; border: 0; background: none; color: var(--text); font: 600 .9rem var(--font-body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .big-num { font: 700 2.2rem/1 var(--font-head); color: var(--text) !important; }
@@ -50,6 +50,12 @@
   .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stepper li:nth-child(3n)::after { display: none; }
 }
+/* A short journey (up to 4 steps) keeps one row down to the narrow layout, instead of wrapping 3 + 1. */
+@container (min-width: 560px) and (max-width: 879px) {
+  .stepper[data-short] { grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); }
+  .stepper[data-short] li:nth-child(3n)::after { display: block; }
+  .stepper[data-short] li:last-child::after { display: none; }
+}
 @container (max-width: 559px) {
   .stepper { grid-template-columns: 1fr; row-gap: 4px; }
   .stepper li { display: grid; grid-template-columns: 34px 1fr; column-gap: 14px; align-items: center; padding: 10px 0; text-align: left; }
@@ -61,15 +67,6 @@
 }
 
 /* ---------- guide ---------- */
-.accordion { display: grid; gap: 12px; max-width: 820px; }
-.accordion details { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 0 22px; }
-.accordion details[open] { box-shadow: var(--shadow); }
-.accordion summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; font: 600 1.05rem var(--font-head); }
-.accordion summary::-webkit-details-marker { display: none; }
-.accordion summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: var(--gold); transition: transform .2s; }
-.accordion details[open] summary::after { transform: rotate(45deg); }
-.accordion .body { padding-bottom: 18px; color: var(--text-muted); }
-.accordion .body p { margin: 0 0 12px; }
 
 /* ---------- tabs ---------- */
 .tabs { display: flex; gap: 6px; padding: 5px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); width: fit-content; max-width: 100%; overflow-x: auto; }
@@ -186,53 +183,6 @@
 .hist td { padding: 12px; border-bottom: 1px solid var(--border); font-size: .92rem; }
 .scroll-x { overflow-x: auto; }
 
-/* ---------- documents ---------- */
-.doc-group + .doc-group { margin-top: 28px; }
-.doc-group h2 { font: 500 .68rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-.doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.doc { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; }
-.ftype { flex: none; display: grid; place-items: center; width: 46px; height: 52px; border-radius: 10px; background: var(--teal-tint); color: var(--teal); font: 500 .62rem var(--mono); letter-spacing: .06em; }
-.ftype.pdf { background: var(--ft-pdf-bg); color: var(--ft-pdf); } .ftype.doc { background: var(--ft-doc-bg); color: var(--ft-doc); } .ftype.xls { background: var(--ft-xls-bg); color: var(--ft-xls); } .ftype.ppt { background: var(--ft-ppt-bg); color: var(--ft-ppt); }
-.doc .t { flex: 1 1 200px; font-weight: 500; min-width: 0; }
-.doc .acts { display: flex; gap: 8px; }
-
-/* ---------- exam / certificate ---------- */
-.exam-grid { display: grid; gap: 20px; }
-.exam-meta { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 20px 0; }
-.exam-meta dt { font: 500 .64rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
-.exam-meta dd { margin: 4px 0 0; font-weight: 600; }
-.count { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; max-width: 460px; }
-.count div { padding: 14px 6px; text-align: center; border-radius: 16px; background: var(--dark); color: var(--on-dark); }
-.count strong { display: block; font: 700 1.9rem/1 var(--font-head); font-variant-numeric: tabular-nums; }
-.count span { font: 500 .58rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--next-label); }
-.instr { color: var(--text-muted); } .instr p { margin: 0 0 10px; }
-.note-line { margin: 10px 0 0; color: var(--text-muted); font-size: .88rem; }
-.cert-locked { text-align: center; max-width: 560px; }
-.lock { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: var(--gold-tint); color: var(--gold); }
-.checklist { list-style: none; margin: 22px 0; padding: 0; display: grid; gap: 10px; text-align: left; }
-.checklist li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; }
-.checklist .ic { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--border); color: var(--text); font-size: .8rem; }
-.checklist li.met .ic { background: var(--teal); color: var(--on-teal); }
-.checklist small { display: block; color: var(--text-muted); }
-.cert-frame { max-width: 760px; padding: clamp(12px, 2.4vw, 24px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
-.cert { position: relative; max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px); text-align: center; border-radius: var(--radius); color: var(--paper-ink); background: linear-gradient(135deg, var(--paper), var(--paper-edge)); border: 2px solid var(--paper-gold); box-shadow: inset 0 0 0 8px var(--paper), inset 0 0 0 9px color-mix(in srgb, var(--paper-gold) 45%, transparent); }
-.cert .cert-logo { display: block; width: auto; height: 56px; margin: 0 auto 12px; border-radius: 8px; }
-.cert .mono-label { color: var(--paper-gold); }
-.cert h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 10px 0; color: var(--paper-ink); }
-.cert .who { font: 700 clamp(1.5rem, 4vw, 2.2rem) var(--font-head); color: var(--paper-gold); margin: 18px 0 6px; }
-.cert p { margin: 4px 0; color: var(--paper-muted); }
-.cert b { color: var(--paper-ink); }
-.cert-prog { margin: 8px 0 0; font-weight: 600; }
-
-/* "Download certificate" opens the print dialog (Save as PDF): only the certificate is printed */
-@page { size: A4 landscape; margin: 12mm; }
-@media print {
-  body.app-body * { visibility: hidden; }
-  .cert-frame, .cert-frame * { visibility: visible; }
-  .cert-frame { position: absolute; inset: 0 auto auto 0; width: 100%; max-width: none; padding: 0; border: 0; background: none; }
-  .cert { max-width: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-}
-
 /* ---------- Amigo (coming soon) ---------- */
 .am { max-width: 640px; margin: 0 auto; padding: 32px 0 0; text-align: center; }
 .am-avatar { display: grid; place-items: center; width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: var(--teal-tint); }
@@ -262,8 +212,6 @@
   .st-layout > .st-list { grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); overflow-x: auto; padding-bottom: 6px; }
 }
 @media (max-width: 480px) {
-  .count { gap: 6px; }
-  .count strong { font-size: 1.5rem; }
 }
 
 /* ---------- course shell (body.hub-page, set in js/hub/core.js) ---------- */
@@ -292,3 +240,9 @@
 .nav-lock svg { width: 16px; height: 16px; }
 .app.rail .nav-lock { position: absolute; top: 4px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); }
 .app.rail .nav-lock svg { width: 12px; height: 12px; }
+
+/* Reduced motion: no sliding, lifting or fading on the course hub's cards, buttons and drawer; state changes still show. */
+@media (prefers-reduced-motion: reduce) {
+  .round-btn, .vcard, .link-card, .opt, .hub-page .side, .hub-page .side.open, .hub-page .scrim { transition: none; }
+  .round-btn:hover, .vcard:hover, .link-card:hover { transform: none; }
+}

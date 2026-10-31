@@ -52,8 +52,8 @@ h1, h2, h3 { font-family: var(--font-head); margin: 0; letter-spacing: -.02em; }
   content: ""; position: absolute; inset: 0; z-index: -2;
   background-image: linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
   background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 30%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, var(--mask-solid) 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, var(--mask-solid) 30%, transparent 100%);
 }
 .hero::after { /* blurred gradient glow */
   content: ""; position: absolute; z-index: -1; left: 50%; top: 40%; width: min(760px, 120vw); height: 420px; transform: translate(-50%, -50%);
