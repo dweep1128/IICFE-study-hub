@@ -22,34 +22,29 @@ const NAV = [
   { id: "certificate", label: "Certificate", icon: "certificate" },
   { id: "amigo", label: "Amigo", icon: "chatbot" }, // icon name is the shell's chat-bubble glyph
 ];
-// Pages that are not in the sidebar but still have a route. They belong to Sessions (Session 1's Study Notes, Activities, Practice and Final Exam)
-// and highlight it in the nav. TODO(sessions): move these under #sessions/s1/... and delete this list.
-const SESSION_ROUTES = ["guide", "resources", "mock", "final"];
-// All four session steps are native: Resources (js/hub/session.js), Mock Tests and Final Exam (js/hub/tests.js); the rest are ordinary panels.
-const RAIL_TABS = ["resources", "mock", "final"];
-const NEEDS_PROGRESS = new Set(["resources", "mock", "final", "certificate"]);
-
-// TODO(portal): temporary stand-ins, replaced as each portal page is built. Sessions links to Session 1's existing pages meanwhile.
-const STAND_IN = {
-  sessions: ["Sessions", "Your session plan."],
-};
-for (const [id, [label, title]] of Object.entries(STAND_IN)) {
-  Panels[id] = async (el) => {
-    el.innerHTML = `<div class="panel-head"><p class="mono-label">${esc(label)}</p><h1>${esc(title)}</h1></div>` + emptyState("Being rebuilt", "This page is coming in the next step.", icon("lock"))
-      + (id === "sessions" ? `<p style="margin-top:16px"><a class="btn-pill" href="#resources/study-notes">Session 1: Study Notes</a> <a class="btn-pill" href="#mock">Practice Test</a> <a class="btn-pill" href="#final">Final Exam</a></p>` : "");
-  };
-}
+const NEEDS_PROGRESS = new Set(["sessions", "certificate"]);
 
 let shell;
 let seq = 0;
 
 // "#resources/study-notes" -> ["resources", "study-notes"]
 const hashParts = () => location.hash.slice(1).split("/");
-const LEGACY_IDS = { chatbot: "amigo", exam: "final" }; // old bookmarks
+const LEGACY_IDS = { chatbot: "amigo" }; // old bookmarks
+// Old bookmarks to the session steps: #resources/study-notes, #resources/s2/activities, #mock, #final, #final/mentor-desk -> the same step under Sessions.
+function legacyHash() {
+  const [a, b, c] = hashParts();
+  const sid = /^s(d+)$/.exec(b ?? "");
+  const no = sid ? sid[1] : "1";
+  const key = sid ? c : b;
+  if (a === "resources") return `#sessions/${no}${key ? `/${key}` : ""}`;
+  if (a === "mock") return "#sessions/1/practice";
+  if (a === "final" || a === "exam") return `#sessions/1/${b === "mentor-desk" ? "mentor-desk" : "real-test"}`;
+  return null;
+}
 const currentId = () => {
   const raw = hashParts()[0];
   const id = LEGACY_IDS[raw] ?? raw;
-  return NAV.some((n) => n.id === id) || SESSION_ROUTES.includes(id) ? id : "overview";
+  return NAV.some((n) => n.id === id) ? id : "overview";
 };
 
 // Small lock beside "Final Exam" while it is locked. The link still works: it opens the Requirements page.
@@ -85,16 +80,18 @@ function drawJourneyWidget() {
 }
 
 async function route(isFirst = false) {
+  const legacy = legacyHash();
+  if (legacy) return location.replace(legacy); // the hashchange runs route() again
   const id = currentId();
   const mine = ++seq;
   const panel = shell.panel;
-  shell.setActive(SESSION_ROUTES.includes(id) ? "sessions" : id);
+  shell.setActive(id);
   shell.closeDrawer();
-  shell.setRail(RAIL_TABS.includes(id)); // these views get the 72px icon rail (see shell.js)
+  shell.setRail(id === "sessions" && Sessions.wantsRail()); // Session 1's reading layout gets the 72px icon rail (see shell.js)
   syncExamLock();
 
-  // Study Notes <-> Activities switch in place, so a game in progress and the scroll position survive.
-  if (id === "resources" && Resources.go(hashParts().slice(1))) return;
+  // Tabs inside a session switch in place, so a game or a quiz in progress and the scroll position survive.
+  if (id === "sessions" && Sessions.go(hashParts().slice(1))) return;
 
   Hub.cleanup?.();
   Hub.cleanup = null;

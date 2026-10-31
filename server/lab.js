@@ -16,6 +16,7 @@ const manifest = require("../content/founders-lab/manifest.json");
 const { buildJourney, ALL_ITEMS } = require("./journey");
 const submissions = require("./submissions");
 const competitions = require("./competitions");
+const sessionsLib = require("./sessions");
 const { isId, httpError, parseJson } = require("./util");
 
 const COURSE_ID = manifest.courseId;
@@ -25,6 +26,9 @@ const CHECKLIST_TAB = "LabChecklist";
 const SUBMISSIONS_TAB = "LabSubmissions";
 const COMPETITIONS_TAB = "LabCompetitions";
 const ENTRIES_TAB = "LabCompetitionEntries";
+const SESSIONS_TAB = "LabSessions";
+const MAX_SESSION_NO = 1000;
+const MAX_TICKS = 200; // a bound on the request, not on the outputs a session may list
 const JOURNEY_TABS = [CHECKLIST_TAB, SUBMISSIONS_TAB];
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const MAX_ID_LENGTH = 400;
@@ -258,6 +262,13 @@ module.exports = function labRouter({ requireLogin }) {
   // ----- submissions (a pasted https link for now; see submissions.js) -----
   // Body: { uploadType, itemId, url }. The item, its label and its rules are looked up here, never taken from the browser.
   function resolveItem(t, sid, type, itemId) {
+    if (type === "activity") {
+      // A session upload slot: the id is "s<no>|<slot name>" and both must exist in a visible session.
+      const m = /^s(\d+)\|(.+)$/.exec(itemId);
+      const session = m && sessionsLib.buildSessions(t.LabSessions).find((x) => x.no === Number(m[1]) && x.visible);
+      if (!session || !session.slots.includes(m[2])) throw httpError(400, "Unknown item.");
+      return { label: m[2], sessionNo: session.no };
+    }
     if (type === "checkpoint") {
       const item = ALL_ITEMS.get(itemId);
       if (!item || item.kind !== "upload") throw httpError(400, "Unknown item.");
@@ -265,7 +276,7 @@ module.exports = function labRouter({ requireLogin }) {
       if (journeyOf(t, sid).stages.find((x) => x.id === item.stageId).status === "locked") throw httpError(409, "Finish the compulsory items in the earlier stage first.");
       return { label: item.label };
     }
-    throw httpError(400, "Unknown item."); // required documents and session upload slots are added with their pages
+    throw httpError(400, "Unknown item."); // required documents are added with their page
   }
 
   r.post("/submissions", route(async (req, res) => {
@@ -277,20 +288,100 @@ module.exports = function labRouter({ requireLogin }) {
 
     const key = `${sid}|${uploadType}|${itemId}`;
     const submission = await withLock(`submission|${key}`, async () => {
-      const t = await load(req, JOURNEY_TABS); // fresh read right before the insert
+      const t = await load(req, [...JOURNEY_TABS, SESSIONS_TAB]); // fresh read right before the insert
       const item = resolveItem(t, sid, uploadType, itemId);
       const mine = t.LabSubmissions.filter((x) => x.studentId === sid && x.uploadType === uploadType && x.itemId === itemId);
       const latest = [...submissions.latestByItem(mine).values()][0];
       if (latest && submissions.statusOf(latest) === "approved") throw httpError(409, "This item is already approved.");
       const version = (latest ? Number(latest.version) : 0) + 1;
       const row = {
-        subId: `${key}|v${version}`, studentId: sid, courseId: COURSE_ID, uploadType, itemId, itemLabel: item.label, sessionNo: "",
+        subId: `${key}|v${version}`, studentId: sid, courseId: COURSE_ID, uploadType, itemId, itemLabel: item.label, sessionNo: item.sessionNo ?? "",
         url: link.url, fileName: submissions.nameFromLink(link.url), version, status: "submitted", reviewNote: "", reviewer: "", submittedAt: new Date().toISOString(), reviewedAt: "",
       };
       await sheets.appendRow(SUBMISSIONS_TAB, row);
       return submissions.toView(row);
     });
     res.json({ ok: true, submission, journey: journeyOf(await load(req, JOURNEY_TABS), sid) });
+  }));
+
+  // ----- sessions (the timeline and each session's page) -----
+  const sessionFor = (t, no) => sessionsLib.buildSessions(t.LabSessions).find((x) => x.no === no);
+  const sessionNo = (req) => { const n = Number(req.params.no); return Number.isInteger(n) && n > 0 && n < MAX_SESSION_NO ? n : 0; };
+  const SESSION_TABS = [SESSIONS_TAB, PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB];
+  // Everything one student has done in one session, read from rows already loaded.
+  function sessionState(t, sid, s) {
+    const nativeSession = SESSIONS.get(sessionsLib.idOf(s.no));
+    const native = nativeSession?.tests ? nativeSession : null;
+    const mine = t.LabSubmissions.filter((x) => x.studentId === sid && x.uploadType === "activity" && String(x.sessionNo) === String(s.no));
+    const latest = submissions.latestByItem(mine);
+    const subs = {};
+    for (const slot of s.slots) { const row = latest.get(`activity:s${s.no}|${slot}`); if (row) subs[slot] = submissions.toView(row); }
+    const exam = native && t.LabExamAttempts.find((a) => a.attemptKey === attemptKey(sid, native.id));
+    const quiz = stateOf(t, sid, sessionsLib.idOf(s.no), "quiz");
+    const ticked = stateOf(t, sid, sessionsLib.idOf(s.no), "ticks")?.ticked ?? [];
+    const uploadCount = s.slots.filter((slot) => subs[slot] && submissions.counts(subs[slot])).length;
+    const steps = sessionsLib.stepsOf(s, { ticked, native: !!native, examDone: !!exam?.submittedAt, quizAttempts: quiz?.attempts ?? 0, uploadCount });
+    return { native, subs, ticked, quiz, steps, exam };
+  }
+
+  function sessionCards(t, sid) {
+    return sessionsLib.buildSessions(t.LabSessions).map((s) => {
+      if (!s.visible) return { no: s.no, name: s.name, visible: false };
+      const st = sessionState(t, sid, s);
+      const gate = st.native ? gateOf(t, sid, st.native) : null;
+      return {
+        no: s.no, name: s.name, visible: true, phase: s.phase, date: s.date, time: s.time, duration: s.duration, description: sessionsLib.describe(s.activities), steps: st.steps,
+        lab: gate && { notes: gate.parts.notes, games: gate.parts.activities, practice: gate.parts.practice.have === 1, exam: st.exam?.submittedAt ? "submitted" : st.exam ? "in_progress" : "none" },
+      };
+    });
+  }
+
+  r.get("/sessions", route(async (req, res) => {
+    const t = await load(req, SESSION_TABS);
+    res.json({ sessions: sessionCards(t, req.user.studentId), next: sessionsLib.nextSession(sessionsLib.buildSessions(t.LabSessions), todayIST()) });
+  }));
+
+  // A locked or unknown session is a 404, so its content is never sent.
+  r.get("/sessions/:no", route(async (req, res) => {
+    const no = sessionNo(req);
+    const t = await load(req, SESSION_TABS);
+    const s = no ? sessionFor(t, no) : null;
+    if (!s?.visible) throw httpError(404, NOT_AVAILABLE);
+    const st = sessionState(t, req.user.studentId, s);
+    res.json({
+      no: s.no, sessionId: sessionsLib.idOf(s.no), native: !!st.native, name: s.name, phase: s.phase, date: s.date, time: s.time, duration: s.duration, readingUrl: s.readingUrl,
+      activities: s.activities, instructions: s.instructions, outputs: s.outputs, recap: s.recap, takeaways: s.takeaways, uploadSlots: s.slots,
+      quiz: s.quiz.map(({ q, options }) => ({ q, options })), ticked: st.ticked, submissions: st.subs, steps: st.steps,
+      quizResult: st.quiz ? { bestScore: st.quiz.best, attempts: st.quiz.attempts } : null, hasPitchTimer: sessionsLib.PITCH_TIMER_SEED.test(s.instructions),
+    });
+  }));
+
+  // Body: { ticked: [output index, ...] }
+  r.post("/sessions/:no/ticks", route(async (req, res) => {
+    const no = sessionNo(req);
+    const t = await load(req, [SESSIONS_TAB]);
+    const s = no ? sessionFor(t, no) : null;
+    if (!s?.visible) throw httpError(404, NOT_AVAILABLE);
+    const raw = req.body?.ticked;
+    if (!Array.isArray(raw) || raw.length > MAX_TICKS || !raw.every((n) => Number.isInteger(n) && n >= 0 && n < s.outputs.length)) throw httpError(400, "Invalid request.");
+    const ticked = [...new Set(raw)].sort((a, b) => a - b);
+    await saveState(req.user.studentId, sessionsLib.idOf(no), "ticks", { ticked });
+    res.json({ ok: true, ticked });
+  }));
+
+  // Body: { answers: [option index or -1, ...] }. The answer key lives in the Sheet row and only leaves with the graded result.
+  r.post("/sessions/:no/quiz", route(async (req, res) => {
+    const no = sessionNo(req);
+    const sid = req.user.studentId;
+    const t = await load(req, [SESSIONS_TAB, PROGRESS_TAB]);
+    const s = no ? sessionFor(t, no) : null;
+    if (!s?.visible || !s.quiz.length) throw httpError(404, NOT_AVAILABLE);
+    const graded = sessionsLib.gradeQuiz(s.quiz, req.body?.answers);
+    if (!graded) throw httpError(400, "Invalid answers.");
+    const prev = stateOf(t, sid, sessionsLib.idOf(no), "quiz");
+    const state = { best: Math.max(prev?.best ?? 0, graded.score), attempts: (prev?.attempts ?? 0) + 1 };
+    await saveState(sid, sessionsLib.idOf(no), "quiz", state);
+    res.json({ grade: { ...graded, bestScore: state.best, attempts: state.attempts } });
   }));
 
   // ----- competitions -----

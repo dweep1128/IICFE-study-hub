@@ -51,7 +51,7 @@ app.use("/api", express.json({ limit: BODY_LIMIT }), cookieParser(), (req, res, 
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
+app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: Number(process.env.API_MAX_REQUESTS) || API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

@@ -100,8 +100,8 @@ Panels.overview = async (el, hub) => {
   }
   const j = await Founders.journey(true); // fresh each visit; a failure falls through to the router's error box with Retry
   el.className = "pt-page pt-stagger";
-  // TODO(sessions): the next session comes from the Sessions list once that page exists.
-  const nextSession = null;
+  // The next visible session dated today or later, worked out by the server from the Sessions list. A failure just shows "no upcoming sessions".
+  const nextSession = await api(`/api/courses/${Founders.COURSE_ID}/lab/sessions`).then((r) => r.next && { topic: r.next.name, date: r.next.date, time: r.next.time }).catch(() => null);
   let shown = j;
   const draw = () => { el.innerHTML = overviewHtml(hub, shown, nextSession); };
   draw();

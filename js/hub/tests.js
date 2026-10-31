@@ -581,24 +581,3 @@ const TestsView = (() => {
 
   return { mountPractice, mountFinal, mountDesk, canUseDesk, code6, verifySlip };
 })();
-
-// Panels for #mock and #final. A course without a content manifest keeps the "coming soon" panels from overview.js.
-const testsFallback = { mock: Panels.mock, final: Panels.final };
-const TEST_ITEM_VIEW = { mock: "practice", final: "final" };
-
-async function mountTestPanel(kind, el, hub) {
-  const parts = hashParts().slice(1);
-  if (!hub.manifest) return testsFallback[kind](el, hub);
-  if (kind === "final" && parts[0] === "mentor-desk" && TestsView.canUseDesk(hub.user)) return TestsView.mountDesk(el, { session: hub.manifest.sessions[0] });
-  const session = parts[0] ? hub.manifest.sessions.find((x) => x.id === parts[0]) : hub.manifest.sessions[0];
-  if (!session) return notAvailableYet(el); // an unknown or not-yet-released module
-  if (!session.items.some((it) => it.view === TEST_ITEM_VIEW[kind])) return testsFallback[kind](el, hub);
-  try {
-    return await (kind === "mock" ? TestsView.mountPractice : TestsView.mountFinal)(el, { session });
-  } catch (e) {
-    if (e.status === 404) return notAvailableYet(el); // the server doesn't know this module yet
-    throw e; // the router shows the error box with Retry
-  }
-}
-Panels.mock = (el, hub) => mountTestPanel("mock", el, hub);
-Panels.final = (el, hub) => mountTestPanel("final", el, hub);

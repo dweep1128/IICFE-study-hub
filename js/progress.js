@@ -16,9 +16,6 @@ const Founders = (() => {
   const SAVE_RETRY_MS = 3000;
   const SAVE_TRIES = 3;
   const REFRESH_MIN_MS = 10_000; // how often coming back to the window may re-read the server
-  // Which course-sidebar tab shows each step (Resources = notes + activities, Mock Tests = practice, Final Exam = the "real-test" step: the key keeps its old name, students only ever see "Final Exam").
-  const STEP_TAB = { "study-notes": "resources", activities: "resources", practice: "mock", "real-test": "final" };
-  const SINGLE_STEP_TABS = ["mock", "final"]; // one native page per tab, so the hash is just "#mock" / "#final"
   const BROWSER_PARTS = { "study-notes": "notes", activities: "activities" }; // the only parts the browser may write
   const PROGRESS_EVENT = "founders-progress";
   let manifestPromise = null;
@@ -204,12 +201,8 @@ const Founders = (() => {
       hint: missing.length ? `Finish ${missing.map((r) => r.label).join(" and ")} to unlock the Final Exam` : "" };
   }
 
-  // "#resources/study-notes" for the first session, "#resources/s2/study-notes" afterwards.
-  const hash = (manifest, sessionId, key) => {
-    const tab = STEP_TAB[key] ?? "resources";
-    if (SINGLE_STEP_TABS.includes(tab)) return `#${tab}`;
-    return `#${tab}/${sessionId === manifest.sessions[0].id ? "" : `${sessionId}/`}${key}`;
-  };
+  // Every step lives under Sessions: "#sessions/1/study-notes", "#sessions/1/practice", "#sessions/1/real-test".
+  const hash = (manifest, sessionId, key) => `#sessions/${manifest.sessions.findIndex((s) => s.id === sessionId) + FIRST_SESSION_NO}/${key}`;
   const href = (manifest, sessionId, key) => `course.html?id=${COURSE_ID}${hash(manifest, sessionId, key)}`;
   const fileUrl = (item) => `${CONTENT_BASE}${item.file}`;
 
@@ -226,5 +219,5 @@ const Founders = (() => {
   // The lab API for one session (practice, exam). `api` redirects to sign-in on 401 and throws an Error with the server's message otherwise.
   const lab = (sessionId, path, opts) => api(`${LAB_API}/${sessionId}/${path}`, opts);
 
-  return { COURSE_ID, STEP_TAB, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam };
+  return { COURSE_ID, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam };
 })();

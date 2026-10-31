@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 
 const TEST_PORT = 3998;
 process.env.PORT = TEST_PORT;
+process.env.API_MAX_REQUESTS = "100000"; // this suite makes more than the production per-minute limit
 process.env.SESSION_SECRET = "test-secret-".padEnd(40, "x");
 const BASE = `http://localhost:${TEST_PORT}`;
 const PW = "Fixture#Pw-1234";
@@ -27,6 +28,7 @@ const tabs = {
   LabSubmissions: [],
   LabCompetitions: [],
   LabCompetitionEntries: [],
+  LabSessions: [],
 };
 let sheetDown = false;
 const down = () => { if (sheetDown) throw Object.assign(new Error("simulated Google outage"), { code: "ETIMEDOUT" }); };
@@ -338,6 +340,69 @@ async function unlock(cookie) {
   console.error = quiet;
   sheetDown = false;
   assert.equal((await get(`${LAB}/progress`, a)).status, 200, "recovers when the Sheet is back");
+
+  // ---- sessions: the timeline, locked until the Sheet says visible, ticks, quiz graded on the server, upload slots ----
+  const sessList0 = await get(`${LAB}/sessions`, a);
+  assert.equal(sessList0.status, 200);
+  assert.equal(sessList0.json.sessions[0].name, "Where Ideas Come From");
+  assert.equal(sessList0.json.sessions[0].visible, true);
+  assert.equal(sessList0.json.sessions[0].lab.notes.need, NOTE_IDS.length, "session 1 reports its native steps");
+  assert.deepEqual(sessList0.json.sessions.filter((x) => x.visible).map((x) => x.no), [1], "sessions after the first start locked");
+  assert.deepEqual(sessList0.json.sessions[1], { no: 2, name: "Design Thinking", visible: false }, "a locked session carries only its name");
+  assert.equal((await get(`${LAB}/sessions/2`, a)).status, 404, "a locked session has no detail");
+  assert.equal((await post(`${LAB}/sessions/2/ticks`, { ticked: [] }, a)).status, 404);
+  assert.equal((await post(`${LAB}/sessions/2/quiz`, { answers: [] }, a)).status, 404);
+  assert.equal((await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s2|Prototype photo", url: GOOD }, a)).status, 400, "no upload into a locked session");
+  assert.equal((await get(`${LAB}/sessions/abc`, a)).status, 404);
+  assert.equal((await get(`${LAB}/sessions/1`, await login("S003"))).status, 404, "not enrolled");
+
+  const QUIZ = [0, 1, 2].map((n) => ({ q: "Question " + n, options: ["A", "B", "C", "D"], answer: n, explain: "because " + n }));
+  tabs.LabSessions.push({ sessionNo: "2", visible: "TRUE", date: "2099-01-15", time: "5 PM", duration: "2 hrs", output: "Empathy Map\nPrototype", uploadSlots: "Prototype photo\nObservations",
+    activities: "Empathy Map | 25 min\nPrototype | 35 min", recap: "We built things.\n- Observe, do not explain.", quizJson: JSON.stringify(QUIZ), instructions: "Use the 3-minute timer." });
+  const sessList1 = await get(`${LAB}/sessions`, a);
+  const card = sessList1.json.sessions[1];
+  assert.equal(card.visible, true);
+  assert.deepEqual(card.steps.map((x) => x.key), ["outputs", "quiz", "uploads"]);
+  assert.deepEqual(sessList1.json.next, { no: 2, name: "Design Thinking", date: "2099-01-15", time: "5 PM" }, "next session comes from the dates");
+  const d2 = await get(`${LAB}/sessions/2`, a);
+  assert.equal(d2.status, 200);
+  assert.deepEqual(d2.json.quiz[0], { q: "Question 0", options: ["A", "B", "C", "D"] }, "the quiz has no answers");
+  assert.equal(d2.json.hasPitchTimer, true);
+  assert.equal(d2.json.takeaways[0], "Observe, do not explain.");
+
+  assert.equal((await post(`${LAB}/sessions/2/ticks`, { ticked: [5] }, a)).status, 400, "tick index out of range");
+  assert.equal((await post(`${LAB}/sessions/2/ticks`, { ticked: "0" }, a)).status, 400);
+  assert.deepEqual((await post(`${LAB}/sessions/2/ticks`, { ticked: [1, 0, 1] }, a)).json.ticked, [0, 1]);
+  assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[0].done, true, "all outputs ticked");
+  assert.equal((await get(`${LAB}/sessions/2`, b)).json.steps[0].done, false, "another student's ticks are separate");
+
+  assert.equal((await post(`${LAB}/sessions/2/quiz`, { answers: [0, 1] }, a)).status, 400, "wrong number of answers");
+  assert.equal((await post(`${LAB}/sessions/2/quiz`, { answers: [0, 1, 9] }, a)).status, 400);
+  const q1 = await post(`${LAB}/sessions/2/quiz`, { answers: [0, 1, -1] }, a);
+  assert.equal(q1.json.grade.score, 2);
+  assert.equal(q1.json.grade.review[2].chosen, -1, "skipped is allowed");
+  const q2 = await post(`${LAB}/sessions/2/quiz`, { answers: [3, 3, 3] }, a);
+  assert.equal(q2.json.grade.score, 0);
+  assert.deepEqual([q2.json.grade.bestScore, q2.json.grade.attempts], [2, 2], "best score and attempts are kept");
+  assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[1].done, true);
+
+  const up = await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s2|Prototype photo", url: GOOD }, a);
+  assert.equal(up.status, 200);
+  assert.equal(up.json.submission.itemLabel, "Prototype photo");
+  assert.equal(up.json.submission.sessionNo, 2);
+  assert.equal((await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s2|Not a slot", url: GOOD }, a)).status, 400, "unknown slot");
+  const d2b = await get(`${LAB}/sessions/2`, a);
+  assert.ok(d2b.json.submissions["Prototype photo"], "the upload shows on the session");
+  assert.deepEqual(d2b.json.steps[2], { key: "uploads", label: "uploads", done: false, count: 1, total: 2 });
+  assert.equal((await get(`${LAB}/sessions/2`, b)).json.submissions["Prototype photo"], undefined, "another student's upload is separate");
+  assert.ok(!(await get(`${LAB}/journey`, a)).text.includes("s2|"), "session uploads are not journey proof");
+
+  // a Sheet row can hide a session again, and a session in the past is not "next"
+  tabs.LabSessions[0].visible = "FALSE";
+  assert.equal((await get(`${LAB}/sessions/2`, a)).status, 404);
+  tabs.LabSessions[0].visible = "TRUE";
+  tabs.LabSessions[0].date = "2000-01-01";
+  assert.equal((await get(`${LAB}/sessions`, a)).json.next, null);
 
   // ---- the answer key is not reachable by URL, and nothing in any response contains it ----
   const answerText = KEY.final.qs.map((q) => q.o[q.a]);
