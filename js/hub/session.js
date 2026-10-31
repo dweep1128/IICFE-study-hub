@@ -157,7 +157,7 @@ const Resources = (() => {
         : rowBtn({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`;
       $('[data-sec="tests"]', el).innerHTML = `<p class="rs-ph-t">Tests</p><ol class="toc-list">
         ${rowBtn({ open: PRACTICE_KEY, label: "Practice Test", sub: "No timer, retake any time", inner: practice.done ? CHECK : "P", done: practice.done, current: current === PRACTICE_KEY })}
-        ${rowBtn({ open: EXAM_KEY, label: "Final Exam", sub: exam.done ? "Score slip ready" : "One try", inner: exam.done ? CHECK : lockedExam ? icon("lock") : "F", done: exam.done, locked: lockedExam, current: current === EXAM_KEY })}</ol>
+        ${rowBtn({ open: EXAM_KEY, label: "Final Exam", sub: exam.done ? "Result saved" : "One try", inner: exam.done ? CHECK : lockedExam ? icon("lock") : "F", done: exam.done, locked: lockedExam, current: current === EXAM_KEY })}</ol>
         ${lockedExam ? `<p class="sd-lock" role="note">${esc(sum.gate.hint)}</p>` : ""}`;
       const total = (state.video ? 1 : 0) + notes.need + acts.need + 2;
       const done = (state.video && state.videoWatched ? 1 : 0) + notes.have + acts.have + (practice.done ? 1 : 0) + (exam.done ? 1 : 0);

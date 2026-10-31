@@ -28,15 +28,15 @@ let seq = 0;
 // "#resources/study-notes" -> ["resources", "study-notes"]
 const hashParts = () => location.hash.slice(1).split("/");
 const LEGACY_IDS = { chatbot: "amigo" }; // old bookmarks
-// Old bookmarks to the session steps: #resources/study-notes, #resources/s2/activities, #mock, #final, #final/mentor-desk -> the same step under Sessions.
+// Old bookmarks to the session steps: #resources/study-notes, #resources/s2/activities, #mock, #final -> the same step under Sessions.
 function legacyHash() {
   const [a, b, c] = hashParts();
-  const sid = /^s(d+)$/.exec(b ?? "");
+  const sid = /^s(\d+)$/.exec(b ?? "");
   const no = sid ? sid[1] : "1";
   const key = sid ? c : b;
   if (a === "resources") return `#sessions/${no}${key ? `/${key}` : ""}`;
   if (a === "mock") return "#sessions/1/practice";
-  if (a === "final" || a === "exam") return `#sessions/1/${b === "mentor-desk" ? "mentor-desk" : "real-test"}`;
+  if (a === "final" || a === "exam") return "#sessions/1/real-test";
   return null;
 }
 // An empty hash is the Overview; any other name the course does not have (a leftover #documents or #certificate included) is "unavailable".

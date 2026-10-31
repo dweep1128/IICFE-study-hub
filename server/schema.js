@@ -39,7 +39,8 @@ module.exports = {
     LabProfiles: ["profileKey", "studentId", "courseId", "startupName", "oneLineIdea", "problemStatement", "description", "stage", "yourName", "yourRole", "website", "teamJson", "completionPct", "updatedAt"],
     // One row per student, session and part (notes, activities, practice; ticks and quiz for sessions 2 and later).
     LabProgress: ["progressKey", "studentId", "courseId", "sessionId", "part", "stateJson", "updatedAt"],
-    // One row per student and session: the Final Exam attempt (server clock, shuffle, draft, result and score slip).
+    // One row per student and session: the Final Exam attempt (server clock, shuffle, draft and the result: score, total, seconds, submittedAt).
+    // name is the account's name. grade, team and the three slip* columns are no longer written; they stay so rows made earlier keep their values.
     LabExamAttempts: ["attemptKey", "studentId", "courseId", "sessionId", "name", "grade", "team", "startedAt", "orderJson", "draftJson", "submittedAt", "score", "total", "seconds", "slipLine", "slipCode", "slipTs"],
   },
   LAB_TABS: ["LabProgress", "LabExamAttempts", "LabChecklist", "LabSubmissions", "LabCompetitions", "LabCompetitionEntries", "LabSessions", "LabProfiles"],

@@ -271,7 +271,6 @@ Panels.sessions = async (el, hub) => {
   if (!parts[0]) return mountTimeline(el);
   const no = Number(parts[0]);
   if (!Number.isInteger(no) || no < 1) return notAvailableYet(el);
-  if (parts[1] === "mentor-desk" && hub.manifest?.sessions[no - 1] && TestsView.canUseDesk(hub.user)) return TestsView.mountDesk(el, { session: hub.manifest.sessions[no - 1] });
   let detail;
   try { detail = await api(sessionsApi(`/${no}`)); } catch (e) { if (e.status === 404) return notAvailableYet(el); throw e; } // locked and unknown sessions are both a 404
   const st = makeSessionState(detail);

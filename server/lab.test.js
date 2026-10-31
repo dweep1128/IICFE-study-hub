@@ -69,7 +69,7 @@ function correctAnswers(questions) {
     return sq.o.indexOf(q.o[q.a]);
   });
 }
-const DETAILS = { name: "Aarav Sharma", grade: "10", team: "Rocket" };
+// The exam start takes no details: the server uses the signed-in account, so there is nothing for a student to type.
 
 async function unlock(cookie) {
   assert.equal((await post(`${LAB}/progress`, { sessionId: "s1", part: "notes", state: Object.fromEntries(NOTE_IDS.map((id) => [id, true])) }, cookie)).status, 200);
@@ -123,7 +123,7 @@ async function unlock(cookie) {
   const locked = await get(`${LAB}/s1/exam`, a);
   assert.equal(locked.json.state, "locked");
   assert.equal(locked.json.parts.practice.have, 0);
-  assert.equal((await post(`${LAB}/s1/exam/start`, DETAILS, a)).status, 403, "the server re-checks the gate");
+  assert.equal((await post(`${LAB}/s1/exam/start`, {}, a)).status, 403, "the server re-checks the gate");
   assert.equal(tabs.LabExamAttempts.length, 0);
 
   // practice: a low score still counts, and explanations arrive only now
@@ -139,24 +139,23 @@ async function unlock(cookie) {
   await post(`${LAB}/progress`, { sessionId: "s1", part: "activities", state: { team: "Rocket", pts: 1, done: Object.fromEntries(GAME_IDS.map((id) => [id, true])) } }, a);
   assert.equal((await get(`${LAB}/s1/exam`, a)).json.state, "ready");
 
-  // ---- starting: validation, shuffle, no key, one attempt ----
-  for (const bad of [{ ...DETAILS, name: "Al" }, { ...DETAILS, grade: "7" }, { ...DETAILS, team: " " }, {}]) {
-    assert.equal((await post(`${LAB}/s1/exam/start`, bad, a)).status, 400, JSON.stringify(bad));
-  }
-  const start = await post(`${LAB}/s1/exam/start`, { ...DETAILS, name: "Aarav|Sharma" }, a);
+  // ---- starting: no form, shuffle, no key, one attempt ----
+  const start = await post(`${LAB}/s1/exam/start`, { name: "ignored", grade: "7", team: "ignored" }, a);
   assert.equal(start.status, 200);
   assert.equal(start.json.state, "in_progress");
   assert.equal(start.json.questions.length, KEY.final.qs.length);
-  assert.equal(start.json.name, "Aarav/Sharma", "the slip separator can't be typed into a field");
+  assert.ok(!("name" in start.json) && !("grade" in start.json) && !("team" in start.json), "no grade, team or name in the exam");
+  assert.equal(tabs.LabExamAttempts.find((x) => x.studentId === "S001").name, "Student S001", "the Sheet row carries the account's name for staff");
+  assert.equal(tabs.LabExamAttempts.find((x) => x.studentId === "S001").grade, undefined, "grade is no longer collected");
   assert.ok(!/"a"\s*:\s*\d|"why"\s*:\s*"|explain/i.test(start.text), "the exam carries no answer key");
   assert.ok(start.json.remaining <= KEY.final.minutes * 60 && start.json.remaining > KEY.final.minutes * 60 - 5, "server clock starts at the full limit");
   assert.equal(tabs.LabExamAttempts.length, 1);
-  assert.equal((await post(`${LAB}/s1/exam/start`, DETAILS, a)).status, 409, "second start is refused");
+  assert.equal((await post(`${LAB}/s1/exam/start`, {}, a)).status, 409, "second start is refused");
   assert.equal(tabs.LabExamAttempts.length, 1);
 
   // two simultaneous starts by another student create exactly one attempt
   await unlock(b);
-  const [x, y] = await Promise.all([post(`${LAB}/s1/exam/start`, DETAILS, b), post(`${LAB}/s1/exam/start`, DETAILS, b)]);
+  const [x, y] = await Promise.all([post(`${LAB}/s1/exam/start`, {}, b), post(`${LAB}/s1/exam/start`, {}, b)]);
   assert.deepEqual([x.status, y.status].sort(), [200, 409], "racing starts: one wins");
   assert.equal(tabs.LabExamAttempts.filter((r) => r.studentId === "S002").length, 1);
 
@@ -177,7 +176,7 @@ async function unlock(cookie) {
   assert.deepEqual(resumed.json.questions, mine, "same questions in the same order");
   assert.ok(resumed.json.remaining <= start.json.remaining, "the clock keeps running server-side");
   // a student can't read or write another student's attempt
-  assert.equal((await get(`${LAB}/s1/exam`, b)).json.name, DETAILS.name);
+  assert.equal((await get(`${LAB}/s1/exam`, b)).json.state, "in_progress");
   assert.notDeepEqual((await get(`${LAB}/s1/exam`, b)).json.questions, mine);
 
   // ---- expiry: past the deadline the draft is scored, even if nobody asks ----
@@ -185,24 +184,27 @@ async function unlock(cookie) {
   assert.equal((await post(`${LAB}/s1/exam/save`, { answers: right }, a)).status, 409, "no saving after the deadline");
   const closed = await get(`${LAB}/s1/exam`, a);
   assert.equal(closed.json.state, "submitted");
-  assert.equal(closed.json.slip.score, 4, "scored from the 4 draft answers, not from anything sent late");
-  assert.equal(closed.json.slip.n, KEY.final.qs.length);
-  assert.equal(closed.json.slip.time, `${KEY.final.minutes}m 00s`, "a late attempt is recorded as the full time limit");
-  assert.match(closed.json.slip.line, /^FL-S1 \| Aarav\/Sharma \| Gr 10 \| Rocket \| 4\/10 \| 10m 00s \| \d{4}-\d{2}-\d{2} \d{2}:\d{2} \| [0-9A-Z]{6}$/);
+  assert.equal(closed.json.score, 4, "scored from the 4 draft answers, not from anything sent late");
+  assert.equal(closed.json.total, KEY.final.qs.length);
+  assert.equal(closed.json.seconds, KEY.final.minutes * 60, "a late attempt is recorded as the full time limit");
+  assert.ok(!/slip|"line"|"code"/i.test(closed.text), "there is no score slip in the result");
+  const savedRow = tabs.LabExamAttempts.find((x) => x.studentId === "S001");
+  assert.deepEqual([savedRow.score, savedRow.total, savedRow.seconds, !!savedRow.submittedAt], [4, KEY.final.qs.length, KEY.final.minutes * 60, true], "the result is still saved to the Sheet for staff");
+  assert.ok(!savedRow.slipLine && !savedRow.slipCode && !savedRow.slipTs, "no slip text or code is written");
   const late = await post(`${LAB}/s1/exam/submit`, { answers: right }, a);
-  assert.equal(late.json.slip.score, 4, "a late submit can't change the result");
-  assert.equal((await post(`${LAB}/s1/exam/start`, DETAILS, a)).status, 409, "no second attempt after submitting");
+  assert.equal(late.json.score, 4, "a late submit can't change the result");
+  assert.equal((await post(`${LAB}/s1/exam/start`, {}, a)).status, 409, "no second attempt after submitting");
 
   // ---- an on-time submit scores what was sent, once ----
   const bMine = (await get(`${LAB}/s1/exam`, b)).json.questions;
   assert.equal((await post(`${LAB}/s1/exam/submit`, { answers: [1] }, b)).status, 400);
   const done = await post(`${LAB}/s1/exam/submit`, { answers: correctAnswers(bMine) }, b);
-  assert.equal(done.json.slip.score, KEY.final.qs.length);
-  assert.match(done.json.slip.code, /^[0-9A-Z]{6}$/);
-  assert.equal((await post(`${LAB}/s1/exam/submit`, { answers: bMine.map(() => null) }, b)).json.slip.score, KEY.final.qs.length, "the first result stands");
+  assert.equal(done.json.score, KEY.final.qs.length);
+  assert.ok(done.json.seconds >= 0 && done.json.seconds <= KEY.final.minutes * 60, "the time taken is reported");
+  assert.equal((await post(`${LAB}/s1/exam/submit`, { answers: bMine.map(() => null) }, b)).json.score, KEY.final.qs.length, "the first result stands");
   const prog = (await get(`${LAB}/progress`, b)).json.sessions.s1;
   assert.equal(prog.exam.state, "submitted");
-  assert.equal(prog.exam.slip.score, KEY.final.qs.length);
+  assert.deepEqual([prog.exam.score, prog.exam.total], [KEY.final.qs.length, KEY.final.qs.length]);
 
   // ---- journey: 7 stages, ticks and written answers, sequential locking ----
   const J = (cookie) => get(`${LAB}/journey`, cookie);
@@ -332,7 +334,7 @@ async function unlock(cookie) {
   sheetDown = true;
   const quiet = console.error;
   console.error = () => {};
-  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/journey`], ["GET", `${LAB}/competitions`], ["POST", `${LAB}/submissions`, { uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }], ["POST", `${LAB}/journey/check`, { itemId: "landing-test", checked: false }], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, DETAILS], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
+  for (const [m, p, body] of [["GET", `${LAB}/progress`], ["GET", `${LAB}/journey`], ["GET", `${LAB}/competitions`], ["POST", `${LAB}/submissions`, { uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }], ["POST", `${LAB}/journey/check`, { itemId: "landing-test", checked: false }], ["GET", `${LAB}/s1/exam`], ["POST", `${LAB}/s1/exam/start`, {}], ["POST", `${LAB}/progress`, { sessionId: "s1", part: "notes", state: {} }]]) {
     const res = await send(m, p, body, a);
     assert.equal(res.status, 503, `${m} ${p} during an outage`);
     assert.match(res.json.error, /temporarily unavailable/i);
@@ -485,4 +487,4 @@ async function unlock(cookie) {
 
   console.log("lab tests passed");
   process.exit(0);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => { process.stderr.write(`${e.stack}\n`); process.exit(1); }); // console.error is silenced by the outage test

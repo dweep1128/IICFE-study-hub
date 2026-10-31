@@ -32,7 +32,7 @@ const Founders = (() => {
   const setJourney = (j) => { journeyCache = j; changed(); };
 
   // ---------- the store: a mirror of the server's progress, keyed by each step's storageKey ----------
-  const store = new Map(); // storageKey -> value ({id:true,...} for notes, {team,pts,done} for activities, true for practice, the score slip for the exam)
+  const store = new Map(); // storageKey -> value ({id:true,...} for notes, {team,pts,done} for activities, true for practice, the exam result {score, n, seconds})
   const examState = new Map(); // sessionId -> "none" | "in_progress" | "submitted"
   const writable = new Map(); // storageKey -> { sessionId, part } for the keys the browser may save
   const pending = new Map(); // storageKey -> { value, tries, timer }
@@ -56,7 +56,7 @@ const Founders = (() => {
       put(itemOf(manifest, s.id, "study-notes"), sp.notes);
       put(itemOf(manifest, s.id, "activities"), sp.activities);
       put(itemOf(manifest, s.id, "practice"), sp.practice?.done ? true : null);
-      put(itemOf(manifest, s.id, "real-test"), sp.exam?.state === "submitted" ? sp.exam.slip : null);
+      put(itemOf(manifest, s.id, "real-test"), sp.exam?.state === "submitted" ? { score: sp.exam.score, n: sp.exam.total, seconds: sp.exam.seconds } : null);
       examState.set(s.id, sp.exam?.state ?? "none");
     }
   }
@@ -117,11 +117,11 @@ const Founders = (() => {
     if (item) store.set(item.storageKey, true);
     changed();
   }
-  // state: "in_progress" | "submitted" (with the score slip)
-  function recordExam(sessionId, state, slip) {
+  // state: "in_progress" | "submitted" (with the result: { score, n, seconds })
+  function recordExam(sessionId, state, result) {
     const item = manifestSync()?.sessions.find((s) => s.id === sessionId)?.items.find((i) => i.key === "real-test");
     examState.set(sessionId, state);
-    if (item && slip) store.set(item.storageKey, slip);
+    if (item && result) store.set(item.storageKey, result);
     changed();
   }
   let manifestValue = null;
@@ -184,7 +184,7 @@ const Founders = (() => {
 
   // ---------- the Final Exam unlock rule (the browser's copy, for display; the server checks the same rule before it starts an exam) ----------
   // The Final Exam opens when Study Notes, Activities and the Practice Test are all complete (their usual "done" checks above).
-  // Whatever the rules say, an existing score slip or an exam in progress stays reachable. `session` is one entry of summary().sessions.
+  // Whatever the rules say, a finished exam or an exam in progress stays reachable. `session` is one entry of summary().sessions.
   const EXAM_KEY = "real-test";
   const REQUIREMENT_KEYS = ["study-notes", "activities", "practice"];
   function examGate(session) {
@@ -192,7 +192,7 @@ const Founders = (() => {
     const unlocked = reqs.length === REQUIREMENT_KEYS.length && reqs.every((r) => r.done);
     const exam = session.items.find((it) => it.key === EXAM_KEY);
     const inProgress = examState.get(session.id) === "in_progress";
-    const open = unlocked || !!exam?.done || inProgress; // exam.done = a slip exists
+    const open = unlocked || !!exam?.done || inProgress; // exam.done = a result exists
     const have = reqs.reduce((n, r) => n + r.have, 0);
     const need = reqs.reduce((n, r) => n + r.need, 0);
     const missing = reqs.filter((r) => !r.done);
