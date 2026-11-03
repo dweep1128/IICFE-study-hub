@@ -52,8 +52,6 @@
 /* ---------- main column ---------- */
 .ss2 { padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 40px) 64px; max-width: 1180px; }
 .ss2-player .sd-frame { border-radius: 16px; }
-.ss2-player .sd-frame.is-empty { border-color: var(--sage-line); background: var(--cream); }
-.ss2-player .sd-ph-ic { background: var(--sage-tint); color: var(--teal); }
 .ss2-head { margin-top: 24px; }
 .ss2-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; font: 500 .7rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
 .ss2-head h1 { margin: 0; font: 400 clamp(1.9rem, 3.4vw, 2.6rem)/1.05 var(--font-display); letter-spacing: .005em; }

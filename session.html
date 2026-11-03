@@ -7,7 +7,9 @@
   <title>Session · IICFE Study Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/app.css">
@@ -17,21 +19,25 @@
   <link rel="stylesheet" href="css/portal.css">
   <link rel="stylesheet" href="css/session.css">
 </head>
-<body class="app-body">
+<body class="app-body hub-page session-page">
   <a class="skip" href="#main">Skip to content</a>
-  <div class="app" data-app></div>
+  <div class="app" data-app>
+    <!-- painted before any script runs; js/shell.js replaces it with the real sidebar and top bar -->
+    <aside class="side" aria-hidden="true"></aside>
+    <div class="app-main"><div class="topbar"></div><div class="app-panel"><div class="skel skel-h"></div><div class="skel skel-line"></div><div class="skel-grid"><div class="skel skel-card"></div><div class="skel skel-card"></div></div></div></div>
+  </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/theme.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/layout.js"></script>
-  <script src="js/shell.js"></script>
-  <script src="js/progress.js"></script>
-  <script src="js/hub/player.js"></script>
-  <script src="js/hub/notes.js"></script>
-  <script src="js/hub/uploader.js"></script>
-  <script src="js/hub/activities.js"></script>
-  <script src="js/hub/tests.js"></script>
-  <script src="js/hub/session.js"></script>
+  <script src="js/data.js" defer></script>
+  <script src="js/theme.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/layout.js" defer></script>
+  <script src="js/shell.js" defer></script>
+  <script src="js/progress.js" defer></script>
+  <script src="js/hub/player.js" defer></script>
+  <script src="js/hub/notes.js" defer></script>
+  <script src="js/hub/uploader.js" defer></script>
+  <script src="js/hub/activities.js" defer></script>
+  <script src="js/hub/tests.js" defer></script>
+  <script src="js/hub/session.js" defer></script>
 </body>
 </html>

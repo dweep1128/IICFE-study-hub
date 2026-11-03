@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>(function(){var d=document.documentElement,p="light";try{p=localStorage.getItem("iicfe-theme")||"light"}catch(e){}d.dataset.theme=p==="dark"||(p!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"})()</script>
-  <title>Sign In · IICFE Study Hub</title>
+  <title>Sign In · IICFE Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/home.css">
@@ -18,9 +20,9 @@
   <header class="site-header" data-site-header data-cta></header>
 
   <main id="main" class="si">
-    <section class="si-brand" aria-label="IICFE Study Hub">
+    <section class="si-brand" aria-label="IICFE Hub">
       <div class="si-brand-inner">
-        <p class="si-title">Study Hub</p>
+        <p class="si-title">IICFE Hub</p>
         <p class="si-line">Pick up where you left off.</p>
       </div>
     </section>
@@ -46,12 +48,12 @@
     </section>
   </main>
 
-  <footer class="site-footer" id="contact" data-site-footer></footer>
+  <footer class="site-footer" id="contact" data-site-footer data-blurb="IICFE Hub: structured ACCA learning at your own pace."></footer>
 
-  <script src="js/data.js"></script>
-  <script src="js/theme.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/layout.js"></script>
-  <script src="js/signin.js"></script>
+  <script src="js/data.js" defer></script>
+  <script src="js/theme.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/layout.js" defer></script>
+  <script src="js/signin.js" defer></script>
 </body>
 </html>

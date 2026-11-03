@@ -2,6 +2,9 @@
   "routes": [
     { "src": "/(server|scripts|content-src)(/.*)?", "dest": "/api" },
     { "src": "/api/(.*)", "dest": "/api" },
+    { "src": "/assets/(.*)", "headers": { "Cache-Control": "public, max-age=604800, stale-while-revalidate=2592000" }, "continue": true },
+    { "src": "/content/(.*)", "headers": { "Cache-Control": "public, max-age=60, s-maxage=86400, stale-while-revalidate=86400" }, "continue": true },
+    { "src": "/(css|js)/(.*)", "headers": { "Cache-Control": "public, max-age=60, s-maxage=86400" }, "continue": true },
     { "handle": "filesystem" }
   ]
 }

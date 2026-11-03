@@ -2,6 +2,9 @@
 const Auth = (() => {
   let mePromise = null;
 
+  // Cached API answers (shell.js) belong to one student: drop them when the account changes.
+  const dropCache = () => { try { Object.keys(sessionStorage).filter((k) => k.startsWith("iicfe-api:")).forEach((k) => sessionStorage.removeItem(k)); } catch { /* private mode */ } };
+
   const post = (url, body) => fetch(url, {
     method: "POST",
     credentials: "same-origin",
@@ -23,6 +26,7 @@ const Auth = (() => {
         const res = await post("/api/login", { email, password });
         const data = await res.json().catch(() => ({}));
         mePromise = null;
+        dropCache();
         return res.ok ? { ok: true, name: data.name } : { ok: false, error: data.error || "Sign in failed. Please try again." };
       } catch {
         return { ok: false, error: "Can't reach the server. Please try again." };
@@ -31,6 +35,7 @@ const Auth = (() => {
     async logout() {
       try { await post("/api/logout"); } catch { /* cookie expires on its own */ }
       mePromise = null;
+      dropCache();
     },
     // The state-aware auth button/link used by header, hero and footer.
     link(user) {

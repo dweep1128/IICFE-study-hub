@@ -12,28 +12,29 @@ const Hub = {
   url(path) { return `/api/courses/${encodeURIComponent(this.courseId)}/${path}`; },
 };
 
-// The Founder's Lab portal's own navigation, then Study Hub's Amigo.
+// The Founder's Lab portal's own navigation, then the IICFE Buddy chat page.
 const NAV = [
   { id: "overview", label: "Overview", icon: "pGrid" },
   { id: "journey", label: "My Journey", icon: "pCompass" },
   { id: "toolkit", label: "Toolkit", icon: "pBook" },
   { id: "sessions", label: "Sessions", icon: "pCalendar" },
-  { id: "amigo", label: "Amigo", icon: "chatbot" }, // icon name is the shell's chat-bubble glyph
+  { id: "buddy", label: "IICFE Buddy", icon: "chatbot" }, // icon name is the shell's chat-bubble glyph
 ];
-const NEEDS_PROGRESS = new Set(["sessions"]);
+const NEEDS_PROGRESS = new Set(); // the Sessions list waits for progress itself, in parallel with its own request
 
 let shell;
 let seq = 0;
 
 // "#resources/study-notes" -> ["resources", "study-notes"]
 const hashParts = () => location.hash.slice(1).split("/");
-const LEGACY_IDS = { chatbot: "amigo" }; // old bookmarks
+const LEGACY_IDS = { chatbot: "buddy", amigo: "buddy" }; // old bookmarks (#amigo was the chat page's earlier name)
 // Old bookmarks to the session steps: #resources/study-notes, #resources/s2/activities, #mock, #final -> the same step under Sessions.
 function legacyHash() {
   const [a, b, c] = hashParts();
   const sid = /^s(\d+)$/.exec(b ?? "");
   const no = sid ? sid[1] : "1";
   const key = sid ? c : b;
+  if (LEGACY_IDS[a]) return `#${LEGACY_IDS[a]}`; // #amigo -> #buddy, so the address bar shows the current name
   if (a === "resources") return `#sessions/${no}${key ? `/${key}` : ""}`;
   if (a === "mock") return "#sessions/1/practice";
   if (a === "final" || a === "exam") return "#sessions/1/real-test"; // Panels.sessions then forwards these to session.html
@@ -132,7 +133,9 @@ async function startHub() {
   if (!/^[\w-]{1,40}$/.test(Hub.courseId)) return showNotFound();
 
   try {
-    const [h, manifest] = await Promise.all([Hub.getHub(), Hub.courseId === Founders.COURSE_ID ? Founders.load() : null]);
+    const isLab = Hub.courseId === Founders.COURSE_ID;
+    if (isLab) { Founders.ready().catch(() => {}); Founders.journey().catch(() => {}); } // in flight while the course loads, not after it
+    const [h, manifest] = await Promise.all([Hub.getHub(), isLab ? Founders.load() : null]);
     Hub.title = h.course.title;
     Hub.manifest = manifest;
   } catch (e) {
@@ -145,10 +148,9 @@ async function startHub() {
   Founders.watch(syncExamLock);
   if (Hub.manifest) {
     Founders.watch(drawJourneyWidget);
-    Founders.journey().catch(() => {}); // the sidebar widget fills in when this arrives; the Overview and My Journey show their own Retry if it fails
-    Founders.ready().catch(() => {}); // start loading lab progress now; each screen that needs it waits for it (and shows Retry if it fails)
+    drawJourneyWidget(); // fills in when the journey (already requested above) arrives; the Overview and My Journey show their own Retry if it fails
   }
   // The bell lists dues, webinars and news from the same data the workspace uses.
-  api("/api/workspace").then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
+  cachedApi("/api/workspace", BELL_MAX_AGE_MS).then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
   route(true);
 }

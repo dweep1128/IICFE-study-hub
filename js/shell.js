@@ -18,6 +18,18 @@ async function api(path, { method = "GET", body } = {}) {
   return data;
 }
 
+// Read-only data that may be a minute old (the notification bell): kept in sessionStorage so moving between pages does not refetch it.
+// Never used for progress. Cleared on sign-in and sign-out (auth.js).
+const API_CACHE_PREFIX = "iicfe-api:";
+function rememberApi(path, data) { try { sessionStorage.setItem(API_CACHE_PREFIX + path, JSON.stringify({ at: Date.now(), data })); } catch { /* private mode: no cache */ } }
+async function cachedApi(path, maxAgeMs) {
+  try { const c = JSON.parse(sessionStorage.getItem(API_CACHE_PREFIX + path)); if (c && Date.now() - c.at < maxAgeMs) return c.data; } catch { /* no cache */ }
+  const data = await api(path);
+  rememberApi(path, data);
+  return data;
+}
+const BELL_MAX_AGE_MS = 2 * 60 * 1000;
+
 const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 // "2026-10-28" -> "28 Oct 2026". Date-only strings are read as UTC so the day never shifts with the viewer's timezone.
 function fmtDate(v, withYear = true) {

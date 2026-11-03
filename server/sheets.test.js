@@ -21,8 +21,9 @@ const fakeApi = { spreadsheets: { values: {
   append: () => next("append"),
   update: (req) => { updates.push(req.requestBody.values[0]); return Promise.resolve({}); },
 } } };
-const gPath = require.resolve("googleapis");
-require.cache[gPath] = { id: gPath, filename: gPath, loaded: true, exports: { google: { auth: { GoogleAuth: class {} }, sheets: () => fakeApi } } };
+const stub = (id, exports) => { const p = require.resolve(id); require.cache[p] = { id: p, filename: p, loaded: true, exports }; };
+stub("googleapis/build/src/apis/sheets", { sheets: () => fakeApi });
+stub("google-auth-library", { GoogleAuth: class {} });
 const sheets = require("./sheets");
 
 const err = (code, message = code) => Object.assign(new Error(message), { code });

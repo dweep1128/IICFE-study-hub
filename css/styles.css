@@ -18,7 +18,7 @@ h1, h2, h3 { font-family: var(--font-head); margin: 0; letter-spacing: -.02em; }
 .gold { color: var(--gold); }
 
 /* header */
-.site-header { position: fixed; inset: 0 0 auto 0; z-index: 50; height: var(--header-h); background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+.site-header { position: fixed; inset: 0 0 auto 0; z-index: 50; height: var(--header-h); background: color-mix(in srgb, var(--bg) 96%, transparent); border-bottom: 1px solid var(--border); }
 .header-row { display: flex; align-items: center; justify-content: space-between; height: 100%; gap: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; }
 .brand img { height: 38px; width: auto; display: block; flex: none; }

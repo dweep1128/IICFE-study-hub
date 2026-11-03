@@ -3,7 +3,7 @@
 // empty-state copy live here.
 const DATA = {
   site: {
-    brand: { logo: "assets/logo.png", name: "IICFE", sub: "Singapore" },
+    brand: { logo: "assets/logo.webp", name: "IICFE", sub: "Singapore" },
     nav: [
       { label: "Home", href: "index.html" },
       { label: "Courses", href: "courses.html" },

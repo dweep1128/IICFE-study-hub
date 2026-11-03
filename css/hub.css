@@ -183,7 +183,7 @@
 .hist td { padding: 12px; border-bottom: 1px solid var(--border); font-size: .92rem; }
 .scroll-x { overflow-x: auto; }
 
-/* ---------- Amigo (coming soon) ---------- */
+/* ---------- IICFE Buddy (coming soon) ---------- */
 .am { max-width: 640px; margin: 0 auto; padding: 32px 0 0; text-align: center; }
 .am-avatar { display: grid; place-items: center; width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: var(--teal-tint); }
 .am-avatar svg { width: 64px; height: 64px; }

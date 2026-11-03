@@ -194,7 +194,8 @@ function setupTabs() {
     $(`#tab-${name}`).focus();
   });
 }
-addEventListener("resize", () => selectTab(tabFromHash()));
+let resizeFrame = 0; // once per frame, not on every resize event
+addEventListener("resize", () => { cancelAnimationFrame(resizeFrame); resizeFrame = requestAnimationFrame(() => selectTab(tabFromHash())); });
 
 let me = null; // signed-in student from /api/me
 let stopSettings = null;
@@ -236,7 +237,7 @@ async function init() {
   render();
 
   try {
-    [ws, manifest] = await Promise.all([api("/api/workspace"), Founders.load().then((m) => Founders.ready().then(() => m)).catch(() => null)]);
+    [ws, manifest] = await Promise.all([api("/api/workspace").then((d) => (rememberApi("/api/workspace", d), d)), Founders.load().then((m) => Founders.ready().then(() => m)).catch(() => null)]);
   } catch (e) {
     shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
     return;

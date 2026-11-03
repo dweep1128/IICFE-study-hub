@@ -130,6 +130,17 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
 
   // ---------- boot ----------
   async function start() {
+    // Every request starts now, in parallel; the shell paints as soon as /api/me (no Sheet call) answers.
+    const params0 = new URLSearchParams(location.search);
+    const no0 = Number(params0.get("s"));
+    const valid = params0.get("course") === Founders.COURSE_ID && Number.isInteger(no0) && no0 >= 1;
+    const early = valid ? {
+      detail: api(sessionsApi(`/${no0}`)), ready: Founders.ready(),
+      data: Founders.load().then((m) => m.sessions[no0 - 1]?.data
+        ? fetch(Founders.fileUrl({ file: m.sessions[no0 - 1].data }), { credentials: "same-origin" }).then((r) => { if (!r.ok) throw new Error("This session's content is unavailable."); return r.json(); })
+        : null),
+    } : null;
+    if (early) Object.values(early).forEach((p) => p.catch(() => {})); // handled below; avoids "unhandled rejection" noise
     Hub.user = await Auth.me();
     if (!Hub.user) return location.replace("signin.html");
     document.body.classList.add("hub-page", "session-page");
@@ -145,9 +156,8 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     try {
       manifest = await Founders.load();
       const session = manifest.sessions[no - 1];
-      [detail] = await Promise.all([api(sessionsApi(`/${no}`)), Founders.ready()]); // a locked or unknown session is a 404
+      [detail, , data] = await Promise.all([early.detail, early.ready, early.data]); // a locked or unknown session is a 404
       if (!session?.data) return message(shell, "Opens in the course page", "This session is shown on the course page.", `course.html?id=${Founders.COURSE_ID}#sessions/${no}`, "Open it");
-      data = await fetch(Founders.fileUrl({ file: session.data }), { credentials: "same-origin" }).then((r) => { if (!r.ok) throw new Error("This session's content is unavailable."); return r.json(); });
     } catch (e) {
       if (e.status === 404) return message(shell, "Session not available", "It will open here when your mentors release it.", allSessionsHref(), "All sessions");
       return shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
@@ -165,7 +175,7 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     const percent = () => Founders.sessionPercent(summary(), video());
     document.title = `Session ${no}: ${s.title} · IICFE Study Hub`;
     shell.setTopbar({ left: `Session ${no} · ${s.title}`, right: manifest.cohortLabel ?? "" });
-    api("/api/workspace").then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
+    cachedApi("/api/workspace", BELL_MAX_AGE_MS).then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
 
     // ----- left: the session content panel, in the sidebar's own slot -----
     shell.setWidget(`<div class="ss2-side">
@@ -181,7 +191,7 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
 
     // ----- right: video, title, tabs -----
     shell.panel.innerHTML = `<div class="rs ss2">
-      <section class="ss2-player" aria-label="Video lecture">${playerHtml(state.video, s.title)}<div class="sd-watch-row" data-video></div></section>
+      <section class="ss2-player" aria-label="Video lecture">${playerHtml(state.video, { no, title: s.title, theme: s.theme })}<div class="sd-watch-row" data-video></div></section>
       <header class="ss2-head"><p class="ss2-eyebrow"><span class="ss2-no">Session ${no}</span>${s.subtitle ? `<span>${esc(s.subtitle)}</span>` : ""}</p><h1>${esc(s.title)}</h1></header>
       <div class="ss2-tabs" role="tablist" aria-label="Session sections">
         ${TABS.map((t) => `<button type="button" role="tab" id="ss2-tab-${t.id}" aria-controls="ss2-pane-${t.id}" data-tab="${t.id}">${esc(t.label)}<span class="rs-badge"></span></button>`).join("")}</div>

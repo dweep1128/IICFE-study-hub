@@ -2,7 +2,6 @@
 // readTab / readTabs / appendRow / updateRow here and nothing else changes.
 const fs = require("fs");
 const path = require("path");
-const { google } = require("googleapis");
 
 const KEY_FILE = path.resolve(process.env.GOOGLE_KEY_FILE || path.join(__dirname, "credentials", "service-account.json"));
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
@@ -22,7 +21,10 @@ const client = () => {
   if (api) return api;
   const credentials = loadCredentials();
   if (!credentials) throw Object.assign(new Error("No service account credentials found"), { kind: "NO_KEY" });
-  api = google.sheets({ version: "v4", auth: new google.auth.GoogleAuth({ credentials, scopes: SCOPES }) });
+  // Only the Sheets client, loaded on first use: the full googleapis package takes ~2.7s to require, which every cold start paid.
+  const { sheets } = require("googleapis/build/src/apis/sheets");
+  const { GoogleAuth } = require("google-auth-library");
+  api = sheets({ version: "v4", auth: new GoogleAuth({ credentials, scopes: SCOPES }) }); // kept for the life of the instance: one auth client, token reused
   return api;
 };
 
@@ -73,13 +75,35 @@ function toObjects(values = []) {
     .map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
 }
 
-// One API call for several tabs: Sheets allows ~60 reads/min per user, so batch where possible.
-async function readTabs(names) {
-  const res = await guarded(`read ${names.join(",")}`, () => client().spreadsheets.values.batchGet({ spreadsheetId: spreadsheetId(), ranges: names.map(range) }));
-  return Object.fromEntries(res.data.valueRanges.map((vr, i) => [names[i], toObjects(vr.values)]));
+// ---------- short-lived cache for tabs that staff edit by hand and students only read ----------
+// Student progress, attempts, submissions and checklists are NEVER cached, so they are always fresh after a write.
+// A write through this file drops that tab's entry at once; an edit made directly in the Sheet shows within CACHE_MS.
+// ponytail: per-instance memory cache; several Vercel instances each hold their own copy (fine for read-mostly tabs).
+const CACHE_MS = Number(process.env.SHEETS_CACHE_MS ?? 60_000);
+const CACHED_TABS = new Set(["Students", "Courses", "Enrollments", "Payments", "Certificates", "Webinars", "News", "Modules", "Dues",
+  "Resources", "Highlights", "MockTests", "MockQuestions", "LabSessions", "LabCompetitions"]);
+const cache = new Map(); // tab -> { at, rows }
+const cachedRows = (name) => { const c = cache.get(name); return c && Date.now() - c.at < CACHE_MS ? c.rows : null; };
+const forget = (name) => cache.delete(name);
+
+// One API call for several tabs: Sheets allows ~60 reads/min per user, so batch where possible. Tabs still in the cache are not re-read.
+// { fresh: true } skips the cache (sign-in reads Students fresh, so a password edit applies on the very next sign-in).
+async function readTabs(names, { fresh = false } = {}) {
+  const out = {};
+  const missing = [];
+  for (const n of names) { const rows = fresh ? null : cachedRows(n); if (rows) out[n] = rows.slice(); else missing.push(n); }
+  if (missing.length) {
+    const res = await guarded(`read ${missing.join(",")}`, () => client().spreadsheets.values.batchGet({ spreadsheetId: spreadsheetId(), ranges: missing.map(range) }));
+    res.data.valueRanges.forEach((vr, i) => {
+      const rows = toObjects(vr.values);
+      if (CACHED_TABS.has(missing[i])) cache.set(missing[i], { at: Date.now(), rows });
+      out[missing[i]] = rows.slice(); // a copy, so a caller sorting the list never reorders the cached one
+    });
+  }
+  return out;
 }
 
-const readTab = async (name) => (await readTabs([name]))[name];
+const readTab = async (name, opts) => (await readTabs([name], opts))[name];
 
 async function headersOf(name) {
   const res = await guarded(`headers ${name}`, () => client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: `${range(name)}!1:1` }));
@@ -96,6 +120,7 @@ function assertKnownColumns(headers, obj, name) {
 // RAW input: values are stored as typed, so "=SUM(...)" from user input can never run as a formula.
 async function appendRows(name, objs) {
   if (!objs.length) return;
+  forget(name);
   const headers = await headersOf(name);
   objs.forEach((o) => assertKnownColumns(headers, o, name));
   await guarded(`append ${name}`, () => client().spreadsheets.values.append({
@@ -113,6 +138,7 @@ const appendRow = (name, obj) => appendRows(name, [obj]);
 // `guard(currentRow)` (optional) sees the matched row as an object and can veto the write by returning false, so a caller can
 // check "still open?" and write from the same read.
 async function updateRow(name, keyColumn, keyValue, patch, guard) {
+  forget(name);
   const res = await guarded(`read ${name}`, () => client().spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: range(name) }));
   const [headers = [], ...rows] = res.data.values ?? [];
   const keyIdx = headers.indexOf(keyColumn);
@@ -153,6 +179,7 @@ async function ensureTab(name, headers) {
 
 // Renames a header cell in place (data below it is untouched). Returns false when there is nothing to rename.
 async function renameColumn(name, from, to) {
+  forget(name);
   const headers = await headersOf(name);
   const i = headers.indexOf(from);
   if (i < 0 || headers.includes(to)) return false;
@@ -165,6 +192,7 @@ async function renameColumn(name, from, to) {
 
 // Deletes the first row where keyColumn === keyValue. Returns false when nothing matched.
 async function deleteRow(name, keyColumn, keyValue) {
+  forget(name);
   const id = spreadsheetId();
   const res = await client().spreadsheets.values.get({ spreadsheetId: id, range: range(name) });
   const [headers = [], ...rows] = res.data.values ?? [];

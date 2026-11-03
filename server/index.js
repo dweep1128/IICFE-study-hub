@@ -78,7 +78,7 @@ app.post("/api/login", loginLimiter, async (req, res) => {
     return res.status(400).json({ error: "Enter a valid email and password." });
   }
   // Read fresh from the sheet on every login (no cache), so edits there apply on the very next sign-in.
-  const student = (await sheets.readTab("Students")).find((s) => lower(s.email) === email);
+  const student = (await sheets.readTab("Students", { fresh: true })).find((s) => lower(s.email) === email);
   // A blank password cell must never match, whatever was submitted.
   const stored = String(student?.password ?? "").trim();
   const matches = stored !== "" && safeEqual(password, stored);
@@ -100,6 +100,7 @@ app.get("/api/me", requireLogin, (req, res) => res.json({ name: req.user.name, e
 // ---------- data ----------
 app.get("/api/courses", async (req, res) => {
   const courses = await sheets.readTab("Courses");
+  res.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"); // the public catalogue: Vercel's CDN may serve it
   res.json(courses.filter((c) => lower(c.status) === "live" && !isHiddenCourse(c.courseId)).map((c) => ({
     courseId: c.courseId, title: c.title, description: c.description, totalLessons: Number(c.totalLessons) || 0,
   })));
@@ -184,7 +185,7 @@ app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 const PAGES = ["index", "courses", "course", "session", "signin", "workspace"];
 app.get("/", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
 for (const p of PAGES) app.get([`/${p}`, `/${p}.html`], (req, res) => res.sendFile(path.join(ROOT, `${p}.html`)));
-for (const dir of ["css", "js", "assets", "content"]) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { dotfiles: "ignore" }));
+for (const dir of ["css", "js", "assets", "content"]) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { dotfiles: "ignore", maxAge: dir === "assets" ? "7d" : "1m" })); // same lifetimes as vercel.json
 
 // ---------- errors ----------
 app.use((err, req, res, next) => {

@@ -41,12 +41,12 @@ function markerHtml(s) {
 }
 function timelineHtml(sessions, manifest) {
   return `<ol class="sl">${sessions.map((s) => `<li>${markerHtml(s)}${s.visible
-    ? `<div class="sl-card">${s.phase ? `<span class="pt-tag is-active">${esc(s.phase)}</span>` : ""}<h2>${esc(s.name)}</h2>${s.description ? `<p>${esc(s.description)}</p>` : ""}
-        <div class="sl-foot">${s.lab && manifest ? nativeMetaHtml(s, manifest) : stepBarHtml(s.steps)}<a class="btn-pill solid" href="${s.lab && manifest ? esc(Founders.href(manifest, `s${s.no}`)) : `#sessions/${s.no}`}">Open session <span aria-hidden="true">→</span></a></div></div>`
+    ? `<div class="sl-card has-thumb"><div class="sl-thumb">${videoThumbHtml({ no: s.no, title: s.name, hasVideo: !!s.lab?.video, compact: true })}</div><div class="sl-body">${s.phase ? `<span class="pt-tag is-active">${esc(s.phase)}</span>` : ""}<h2>${esc(s.name)}</h2>${s.description ? `<p>${esc(s.description)}</p>` : ""}
+        <div class="sl-foot">${s.lab && manifest ? nativeMetaHtml(s, manifest) : stepBarHtml(s.steps)}<a class="btn-pill solid" href="${s.lab && manifest ? esc(Founders.href(manifest, `s${s.no}`)) : `#sessions/${s.no}`}">Open session <span aria-hidden="true">→</span></a></div></div></div>`
     : `<div class="sl-card is-locked">${icon("lock")}<p>${esc(s.name)}</p><span class="pt-tag is-neutral">Coming soon</span></div>`}</li>`).join("")}</ol>`;
 }
 async function mountTimeline(el, manifest) {
-  const { sessions } = await api(sessionsApi());
+  const [{ sessions }] = await Promise.all([api(sessionsApi()), manifest ? Founders.ready() : null]);
   el.className = "pt-page pt-stagger";
   el.innerHTML = `<header class="tk-head"><p class="pt-eyebrow is-gold">Sessions</p><h1 class="pt-h2">Your session plan.</h1>
     <p class="tk-sub">Open a session for its video, notes, activities and tests. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(sessions, manifest)}`;
@@ -199,7 +199,7 @@ function mountGeneric(el, st, tab) {
   el.innerHTML = `<a class="tk-back" href="#sessions"><span aria-hidden="true">←</span> All sessions</a>
     <div class="ss-head"><div class="tk-badges"><p class="pt-eyebrow is-gold">Session ${st.no}</p>${st.phase ? `<span class="pt-tag is-active">${esc(st.phase)}</span>` : ""}</div>
       <h1 class="pt-h2">${esc(st.name)}</h1>${metaLine(st) ? `<p class="tk-sub">${esc(metaLine(st))}</p>` : ""}<div data-steps></div></div>
-    ${st.video ? `<div class="ss-video">${playerHtml(st.video, st.name)}<div class="sd-watch-row" data-video></div></div>` : ""}
+    ${st.video ? `<div class="ss-video">${playerHtml(st.video, { no: st.no, title: st.name })}<div class="sd-watch-row" data-video></div></div>` : ""}
     <nav class="ss-tabs" aria-label="Session sections"><ul role="tablist">${GENERIC_TABS.map((t) => `<li role="presentation"><a role="tab" href="#sessions/${st.no}/${t.id}" data-tab="${t.id}">${esc(t.label)}</a></li>`).join("")}</ul></nav>
     <div class="ss-panes">${GENERIC_TABS.map((t) => `<section role="tabpanel" data-pane="${t.id}" aria-label="${esc(t.label)}" hidden></section>`).join("")}</div>`;
   const drawSteps = () => { $("[data-steps]", el).innerHTML = stepBarHtml(st.steps); };

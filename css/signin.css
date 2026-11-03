@@ -7,7 +7,7 @@ body.signin { min-height: 100vh; display: flex; flex-direction: column; }
 
 /* brand panel: photo under a deep teal overlay */
 .si-brand { display: flex; align-items: center; min-height: 160px; padding: 0 20px;
-  background: linear-gradient(color-mix(in srgb, var(--teal-deep) 80%, transparent), color-mix(in srgb, var(--teal-deep) 80%, transparent)), url("../assets/hero.png") center / cover no-repeat, var(--teal-deep); color: var(--on-deep); }
+  background: linear-gradient(color-mix(in srgb, var(--teal-deep) 80%, transparent), color-mix(in srgb, var(--teal-deep) 80%, transparent)), url("../assets/signin.webp") center / cover no-repeat, var(--teal-deep); color: var(--on-deep); }
 .si-title { margin: 0; font: 400 clamp(2.4rem, 12vw, 3.4rem)/1 var(--font-display); text-transform: uppercase; }
 .si-line { display: none; margin: 18px 0 0; font: 400 1.25rem/1.4 var(--font-body); }
 

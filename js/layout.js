@@ -28,10 +28,12 @@ function renderBrand() {
   const { logo, name, sub } = DATA.site.brand;
   $$("[data-brand]").forEach((el) => {
     el.innerHTML = `<span class="brand-text">${esc(name)}<small>${esc(sub)}</small></span>`;
-    const img = new Image();
+    const img = new Image(40, 40); // sized up front, so the wordmark never jumps when the logo arrives (layout shift)
     img.alt = ""; // decorative: the wordmark beside it carries the name
-    img.onload = () => el.prepend(img); // wordmark stays; the logo joins it only once it has actually loaded
+    img.decoding = "async";
+    img.onerror = () => img.remove(); // wordmark stays alone if the logo can't load
     img.src = logo;
+    el.prepend(img);
   });
 }
 
@@ -63,7 +65,7 @@ function renderChrome() {
       <div class="container footer-row">
         <div>
           <a class="brand" href="index.html" aria-label="IICFE Singapore home" data-brand></a>
-          <p class="blurb">${esc(footer.blurb)}</p>
+          <p class="blurb">${esc(foot.dataset.blurb ?? footer.blurb)}</p>
           <p class="blurb"><a href="mailto:${esc(footer.email)}">${esc(footer.email)}</a></p>
         </div>
         <nav aria-label="Footer">
