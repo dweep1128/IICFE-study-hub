@@ -28,9 +28,7 @@ body.landing { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(
 .h-72 { font-size: clamp(2.75rem, 1.6rem + 4.2vw, 4.5rem); line-height: 1; }
 .h-76 { font-size: clamp(2.75rem, 1.5rem + 4.6vw, 4.75rem); line-height: 1; }
 
-/* announcement + header */
-.announce { background: var(--teal); color: #fff; font-size: 14px; text-align: center; padding: 11px 16px; }
-.announce a { text-decoration: underline; font-weight: 600; }
+/* header */
 .site-header { border-bottom: 1px solid var(--h-border); background: var(--h-surface); }
 .header-row { max-width: 1200px; margin: 0 auto; padding: 16px clamp(16px, 4vw, 32px); display: flex; align-items: center; gap: 16px 32px; flex-wrap: wrap; }
 .wordmark { display: flex; flex-direction: column; line-height: 1.15; }
@@ -45,8 +43,8 @@ body.landing { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(
 }
 
 /* hero */
-/* --hero-offset = announce bar + header height, so the hero fills the rest of the first viewport */
-.hero { --hero-bg: #F8F7F3; --haze: 255 255 255; --hero-offset: 126px;
+/* --hero-offset = header height, so the hero fills the rest of the first viewport */
+.hero { --hero-bg: #F8F7F3; --haze: 255 255 255; --hero-offset: 82px;
   position: relative; overflow: hidden; display: flex; align-items: center; min-height: max(680px, calc(100svh - var(--hero-offset)));
   background: radial-gradient(ellipse 55% 75% at 22% 50%, #fff, transparent 70%), var(--hero-bg); } /* soft white glow behind the text */
 :root[data-theme="dark"] .hero { --hero-bg: var(--h-bg); --haze: 12 21 22; background: radial-gradient(ellipse 55% 75% at 22% 50%, color-mix(in srgb, var(--teal) 8%, transparent), transparent 70%), var(--hero-bg); }
