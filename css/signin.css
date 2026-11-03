@@ -6,10 +6,10 @@ body.signin { min-height: 100vh; display: flex; flex-direction: column; }
 .si { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 480px; }
 
 /* brand panel: photo under a deep teal overlay */
-.si-brand { display: flex; align-items: center; min-height: 160px; padding: 0 20px;
+.si-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 160px; padding: 0 20px;
   background: linear-gradient(color-mix(in srgb, var(--teal-deep) 80%, transparent), color-mix(in srgb, var(--teal-deep) 80%, transparent)), url("../assets/signin.webp") center / cover no-repeat, var(--teal-deep); color: var(--on-deep); }
-.si-title { margin: 0; font: 400 clamp(2.4rem, 12vw, 3.4rem)/1 var(--font-display); text-transform: uppercase; }
-.si-line { display: none; margin: 18px 0 0; font: 400 1.25rem/1.4 var(--font-body); }
+.si-title { margin: 0; font: 400 clamp(3.2rem, 15vw, 5.4rem)/1 var(--font-display); text-transform: uppercase; text-align: center; }
+.si-line { display: none; text-align: center; margin: 18px 0 0; font: 400 1.25rem/1.4 var(--font-body); }
 
 /* form panel */
 .si-form-wrap { display: grid; place-items: center; padding: 40px 20px 56px; background: var(--surface-2); }
@@ -37,7 +37,7 @@ body.signin { min-height: 100vh; display: flex; flex-direction: column; }
 @media (min-width: 980px) {
   .si { grid-template-columns: 1fr 1fr; }
   .si-brand { padding: 0 4.9vw; }
-  .si-title { font-size: 5vw; }
+  .si-title { font-size: 8vw; }
   .si-line { display: block; }
   .si-form-wrap { padding: 48px 24px; }
 }

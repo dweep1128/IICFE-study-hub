@@ -27,7 +27,7 @@ function nativeMetaHtml(card, manifest) {
   const practiceText = practice ? `${practice.best ?? practice.score}/${practice.total}` : "–";
   const finalText = exam.done ? (exam.score ? `${exam.score.score}/${exam.score.total}` : "✓") : exam.started ? "in progress" : "–";
   return `<div class="ss-prog"><div class="ss-bar" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-    <p class="ss-steps">Notes ${notes.have}/${notes.need} · Activities ${acts.have}/${acts.need} · Tests (Practice ${practiceText}, Final ${finalText})</p></div>`;
+    <p class="ss-steps">Notes ${notes.have}/${notes.need} · Activities ${acts.have}/${acts.need} · Assessment (Practice ${practiceText}, Final ${finalText})</p></div>`;
 }
 // The Sheet may hold an ISO day or free text ("TBD", "1 Oct 2026"); only an ISO day is reformatted.
 const dayText = (d) => (/^d{4}-d{2}-d{2}$/.test(d) ? fmtDate(d) : d);

@@ -128,3 +128,8 @@
   .ss2-tabs { gap: 20px; }
 }
 .session-page .side { overflow: hidden; } /* only the content list scrolls */
+
+/* ---------- player size: 16:9, centred, never taller than 60% of the screen (so the tabs start just below it) ---------- */
+.ss2-player { display: grid; justify-items: center; }
+.ss2-player .sd-frame { width: min(100%, 960px, calc(60vh * 16 / 9)); max-height: 60vh; }
+.ss2-player .sd-watch-row { width: min(100%, 960px); }

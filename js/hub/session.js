@@ -13,7 +13,7 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     { id: "overview", label: "Overview" },
     { id: "notes", label: "Study Notes", key: "study-notes" },
     { id: "activities", label: "Activities", key: "activities" },
-    { id: "tests", label: "Tests" },
+    { id: "tests", label: "Assessment" },
   ];
   const TEST_KEY = { practice: "practice", final: "real-test" };
   const allSessionsHref = () => `course.html?id=${Founders.COURSE_ID}#sessions`;
@@ -238,7 +238,7 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
       $('[data-sec="video"]').innerHTML = `<p class="rs-ph-t">Video lecture</p><ol class="toc-list">${state.video
         ? row({ open: "overview", label: state.video.title || "Video lecture", inner: state.videoWatched ? CHECK : "▶", done: state.videoWatched === true, current: current === "overview" })
         : row({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`;
-      $('[data-sec="tests"]').innerHTML = `<p class="rs-ph-t">Tests</p><ol class="toc-list">
+      $('[data-sec="tests"]').innerHTML = `<p class="rs-ph-t">Assessment</p><ol class="toc-list">
         ${row({ open: "tests/practice", label: "Practice Test", sub: "No timer, retake any time", inner: practice.done ? CHECK : "P", done: practice.done, current: current === "tests" && currentSub === "practice" })}
         ${row({ open: "tests/final", label: "Final Exam", sub: exam.done ? "Result saved" : "One try", inner: exam.done ? CHECK : locked ? icon("lock") : "F", done: exam.done, locked, current: current === "tests" && currentSub === "final" })}</ol>
         ${locked ? `<p class="sd-lock" role="note">${esc(ss.gate.hint)}</p>` : ""}`;
