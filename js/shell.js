@@ -252,7 +252,7 @@ function mountShell({ nav, backLink = null, user, profileHref = null }) {
     side.classList.toggle("open", open);
     scrim.classList.toggle("show", open);
     burger.setAttribute("aria-expanded", open);
-    if (open) $("a[data-id]", side).focus();
+    if (open) $("a[data-id], .pill-back", side)?.focus(); // a page without nav links (session.html) lands on its back button
   };
   burger.addEventListener("click", () => setDrawer(!side.classList.contains("open")));
   scrim.addEventListener("click", () => { setDrawer(false); burger.focus(); });

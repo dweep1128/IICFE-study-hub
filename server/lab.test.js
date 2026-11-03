@@ -74,6 +74,7 @@ function correctAnswers(questions) {
 async function unlock(cookie) {
   assert.equal((await post(`${LAB}/progress`, { sessionId: "s1", part: "notes", state: Object.fromEntries(NOTE_IDS.map((id) => [id, true])) }, cookie)).status, 200);
   assert.equal((await post(`${LAB}/progress`, { sessionId: "s1", part: "activities", state: { team: "Rocket", pts: 120, done: Object.fromEntries(GAME_IDS.map((id) => [id, true])) } }, cookie)).status, 200);
+  assert.equal((await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s1|Founder homework", url: "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view" }, cookie)).status, 200);
   const practice = await post(`${LAB}/s1/practice`, { answers: KEY.practice.qs.map((q) => q.a) }, cookie);
   assert.equal(practice.status, 200);
   assert.equal(practice.json.score, KEY.practice.qs.length);
@@ -137,6 +138,14 @@ async function unlock(cookie) {
   // not yet: Activities are not complete
   assert.equal((await get(`${LAB}/s1/exam`, a)).json.state, "locked");
   await post(`${LAB}/progress`, { sessionId: "s1", part: "activities", state: { team: "Rocket", pts: 1, done: Object.fromEntries(GAME_IDS.map((id) => [id, true])) } }, a);
+  // all four games are not enough: the homework upload is an Activity too, and counts only once it is submitted
+  assert.equal((await get(`${LAB}/s1/exam`, a)).json.state, "locked", "the homework upload is still missing");
+  assert.equal((await get(`${LAB}/s1/exam`, a)).json.parts.activities.need, GAME_IDS.length + 1);
+  const HOMEWORK = "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view";
+  assert.equal((await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s1|Founder homework", url: HOMEWORK }, a)).status, 200);
+  const hwProg = (await get(`${LAB}/progress`, a)).json.sessions.s1;
+  assert.equal(hwProg.uploads["Founder homework"].status, "submitted", "progress carries the upload status");
+  assert.equal(hwProg.practice.attempts, 1);
   assert.equal((await get(`${LAB}/s1/exam`, a)).json.state, "ready");
 
   // ---- starting: no form, shuffle, no key, one attempt ----
@@ -261,6 +270,7 @@ async function unlock(cookie) {
 
   // ---- submissions: a pasted https link, counted at once, status kept for a later review page ----
   const submit = (body, cookie) => post(`${LAB}/submissions`, body, cookie);
+  const homeworkRows = tabs.LabSubmissions.length; // the exam tests above submitted Session 1's homework for two students
   const GOOD = "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view";
   for (const bad of ["", "   ", "http://example.com/a.pdf", "javascript:alert(1)", "ftp://example.com/a", "https://localhost/a", "https://user:pw@example.com/a", "not a link", `https://example.com/${"a".repeat(600)}`]) {
     assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: bad }, a)).status, 400, `refused: ${bad.slice(0, 40)}`);
@@ -270,7 +280,7 @@ async function unlock(cookie) {
   assert.equal((await submit({ uploadType: "bogus", itemId: "solution-concept", url: GOOD }, a)).status, 400);
   assert.equal((await submit({ uploadType: "checkpoint", itemId: "interview-log", url: GOOD }, a)).status, 409, "a locked stage takes no submissions");
   assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, outsider)).status, 404);
-  assert.equal(tabs.LabSubmissions.length, 0, "refused submissions leave nothing behind");
+  assert.equal(tabs.LabSubmissions.length, homeworkRows, "refused submissions leave nothing behind");
 
   const before = (await J(a)).json.stages[1].completion.doneCount;
   const sub = await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: `  ${GOOD}  ` }, a);
@@ -281,21 +291,21 @@ async function unlock(cookie) {
   assert.equal(sub.json.submission.fileName, "drive.google.com", "an id-only link is named by its host");
   assert.equal(sub.json.journey.stages[1].completion.doneCount, before + 1, "a submitted link counts immediately");
   assert.equal(sub.json.journey.stages[1].deliverables.find((d) => d.id === "solution-concept").proof.status, "submitted");
-  assert.equal(tabs.LabSubmissions[0].studentId, "S001");
-  assert.equal(tabs.LabSubmissions[0].status, "submitted");
+  assert.equal(tabs.LabSubmissions[homeworkRows + 0].studentId, "S001");
+  assert.equal(tabs.LabSubmissions[homeworkRows + 0].status, "submitted");
 
   // a resubmission is a new row (version 2); changes_requested takes the credit back; approved is final
   const again = await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: "https://example.com/files/Sketch%20v2.pdf" }, a);
   assert.equal(again.json.submission.version, 2);
   assert.equal(again.json.submission.fileName, "Sketch v2.pdf", "a readable name comes from the link");
-  assert.equal(tabs.LabSubmissions.length, 2, "history is kept");
-  tabs.LabSubmissions[1].status = "changes_requested";
-  tabs.LabSubmissions[1].reviewNote = "Add a label to each part.";
+  assert.equal(tabs.LabSubmissions.length, homeworkRows + 2, "history is kept");
+  tabs.LabSubmissions[homeworkRows + 1].status = "changes_requested";
+  tabs.LabSubmissions[homeworkRows + 1].reviewNote = "Add a label to each part.";
   const sentBack = (await J(a)).json.stages[1].deliverables.find((d) => d.id === "solution-concept");
   assert.equal(sentBack.checked, false, "a reviewer's changes_requested takes the item back");
   assert.equal(sentBack.proof.reviewNote, "Add a label to each part.");
   assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, a)).json.submission.version, 3);
-  tabs.LabSubmissions[2].status = "approved";
+  tabs.LabSubmissions[homeworkRows + 2].status = "approved";
   assert.equal((await submit({ uploadType: "checkpoint", itemId: "solution-concept", url: GOOD }, a)).status, 409, "approved items can't be replaced");
   assert.equal((await J(b)).json.stages[1].deliverables.find((d) => d.id === "solution-concept").proof, null, "students never see each other's submissions");
 

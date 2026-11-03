@@ -32,6 +32,13 @@
   --danger-ink: #7A2315;
   --success: #1F7A55;
 
+  /* Home-page palette, named by job so the course and session pages use it the same way (no new colours, only mixes of the ones above):
+     teal / sage = progress, done, "Submitted", the active item, the tab underline; gold = primary buttons and session-number badges; cream = side panels. */
+  --cream: var(--surface-2);
+  --sage: color-mix(in srgb, var(--teal) 55%, var(--surface));
+  --sage-tint: color-mix(in srgb, var(--teal) 12%, var(--surface));
+  --sage-line: color-mix(in srgb, var(--teal) 32%, var(--border));
+
   --mask-solid: #000;         /* opaque stop of an alpha mask: only its transparency is used, never its colour */
   --dark: #0B1512;            /* inverse chips: timer, countdown, video header */
   --on-dark: #FFFFFF;

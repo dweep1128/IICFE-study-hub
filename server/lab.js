@@ -49,7 +49,10 @@ const UNAVAILABLE = "Founder's Lab is temporarily unavailable. Please try again 
 
 // ---------- sessions known to the server ----------
 const requiredIds = (s, key) => s.items.find((i) => i.key === key)?.requires ?? [];
-const SESSIONS = new Map(manifest.sessions.map((s) => [s.id, { id: s.id, noteIds: requiredIds(s, "study-notes"), gameIds: requiredIds(s, "activities"), tests: tests[s.id] ?? null }]));
+const SESSIONS = new Map(manifest.sessions.map((s, i) => [s.id, {
+  id: s.id, no: i + 1, noteIds: requiredIds(s, "study-notes"), gameIds: requiredIds(s, "activities"), tests: tests[s.id] ?? null,
+  slots: s.items.find((it) => it.key === "activities")?.uploads ?? [], // upload items inside Activities: they count only once submitted
+}]));
 
 // ---------- small helpers ----------
 const shuffled = (a) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
@@ -113,6 +116,16 @@ function proofsOf(t, sid) {
 }
 const journeyOf = (t, sid) => buildJourney(t.LabChecklist.filter((r) => r.studentId === sid), proofsOf(t, sid));
 
+// The student's latest submission per upload item of a native session (slot -> submission view). A reviewer's "changes requested" is not in it.
+function uploadsOf(t, sid, session) {
+  const mine = t.LabSubmissions.filter((x) => x.studentId === sid && x.uploadType === "activity" && String(x.sessionNo) === String(session.no));
+  const latest = submissions.latestByItem(mine);
+  const out = {};
+  for (const slot of session.slots) { const row = latest.get(`activity:${session.id}|${slot}`); if (row) out[slot] = submissions.toView(row); }
+  return out;
+}
+const uploadsDone = (subs) => Object.values(subs).filter((v) => v.status !== "changes_requested").length;
+
 // ---------- the unlock rule (the server's copy: the browser's is only for display) ----------
 function gateOf(t, sid, session) {
   const notes = stateOf(t, sid, session.id, "notes") ?? {};
@@ -121,7 +134,7 @@ function gateOf(t, sid, session) {
   const have = (obj, ids) => ids.filter((id) => obj[id] === true).length;
   const parts = {
     notes: { have: have(notes, session.noteIds), need: session.noteIds.length },
-    activities: { have: have(acts, session.gameIds), need: session.gameIds.length },
+    activities: { have: have(acts, session.gameIds) + uploadsDone(uploadsOf(t, sid, session)), need: session.gameIds.length + session.slots.length },
     practice: { have: practice?.done === true ? 1 : 0, need: 1 },
   };
   return { unlocked: Object.values(parts).every((p) => p.need > 0 && p.have === p.need), parts };
@@ -314,7 +327,7 @@ module.exports = function labRouter({ requireLogin }) {
       const gate = st.native ? gateOf(t, sid, st.native) : null;
       return {
         no: s.no, name: s.name, visible: true, phase: s.phase, date: s.date, time: s.time, duration: s.duration, description: sessionsLib.describe(s.activities), steps: st.steps,
-        lab: gate && { notes: gate.parts.notes, games: gate.parts.activities, practice: gate.parts.practice.have === 1, exam: st.exam?.submittedAt ? "submitted" : st.exam ? "in_progress" : "none" },
+        lab: gate && { video: s.video ? { watched: st.videoWatched } : null, notes: gate.parts.notes, games: gate.parts.activities, practice: gate.parts.practice.have === 1, exam: st.exam?.submittedAt ? "submitted" : st.exam ? "in_progress" : "none" },
       };
     });
   }
@@ -436,7 +449,7 @@ module.exports = function labRouter({ requireLogin }) {
   // ----- progress -----
   r.get("/progress", route(async (req, res) => {
     const sid = req.user.studentId;
-    const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB]);
+    const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB]);
     const sessions = {};
     for (const s of SESSIONS.values()) {
       const row = t.LabExamAttempts.find((a) => a.attemptKey === attemptKey(sid, s.id));
@@ -444,7 +457,8 @@ module.exports = function labRouter({ requireLogin }) {
       sessions[s.id] = {
         notes: stateOf(t, sid, s.id, "notes"),
         activities: stateOf(t, sid, s.id, "activities"),
-        practice: practice?.done ? { done: true, score: practice.score ?? null, total: practice.total ?? null } : null,
+        practice: practice?.done ? { done: true, score: practice.score ?? null, total: practice.total ?? null, best: practice.best ?? null, attempts: practice.attempts ?? 1 } : null,
+        uploads: uploadsOf(t, sid, s),
         exam: row?.submittedAt ? { state: "submitted", score: Number(row.score), total: Number(row.total), seconds: Number(row.seconds) } : row ? { state: "in_progress" } : { state: "none" },
       };
     }
@@ -480,16 +494,16 @@ module.exports = function labRouter({ requireLogin }) {
     const sid = req.user.studentId;
     const prev = stateOf(await sheets.readTabs([PROGRESS_TAB]), sid, session.id, "practice");
     // A low score still counts as done; best score and attempts are kept for the analysis.
-    await saveState(sid, session.id, "practice", {
-      done: true, score, total: qs.length, best: Math.max(prev?.best ?? 0, score), attempts: (prev?.attempts ?? 0) + 1,
-    });
-    res.json({ score, total: qs.length, review: qs.map((q) => ({ a: q.a, why: q.why })) });
+    const best = Math.max(prev?.best ?? 0, score);
+    const attempts = (prev?.attempts ?? 0) + 1;
+    await saveState(sid, session.id, "practice", { done: true, score, total: qs.length, best, attempts });
+    res.json({ score, total: qs.length, best, attempts, review: qs.map((q) => ({ a: q.a, why: q.why })) });
   }));
 
   // ----- Final Exam -----
   r.get("/:sid/exam", route(async (req, res) => {
     const session = sessionOf(req);
-    const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB]);
+    const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB]);
     res.json(await examState(t, req.user.studentId, session));
   }));
 
@@ -499,7 +513,7 @@ module.exports = function labRouter({ requireLogin }) {
     const sid = req.user.studentId;
     const key = attemptKey(sid, session.id);
     const body = await withLock(key, async () => {
-      const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB]); // fresh read right before the insert
+      const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB]); // fresh read right before the insert
       if (t.LabExamAttempts.some((a) => a.attemptKey === key)) throw httpError(409, "You have already taken or started this exam. It can only be taken once.");
       if (!gateOf(t, sid, session).unlocked) throw httpError(403, "Finish Study Notes, Activities and the Practice Test first.");
       const qs = session.tests.final.qs;

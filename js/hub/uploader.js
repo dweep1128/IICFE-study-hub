@@ -41,10 +41,12 @@ function mountUploader(host, { uploadType, itemId, sessionNo, label, cta, ghost 
   host.innerHTML = `<div class="up"><label class="sr-only" for="${id}">Link for ${esc(label)}</label>
     <div class="up-row"><input class="pt-field" id="${id}" type="${SubmissionStorage.inputType}" inputmode="url" autocomplete="off" spellcheck="false" placeholder="${esc(SubmissionStorage.placeholder)}" aria-describedby="${id}-m">
       <button type="button" class="${ghost ? "pt-ghost" : "btn-pill solid"}">${esc(cta)}</button></div>
+    <div class="up-prog" role="progressbar" aria-label="Saving ${esc(label)}" hidden><i></i></div>
     <p class="up-hint">${esc(SubmissionStorage.hint)}</p><p class="up-msg" id="${id}-m" aria-live="polite"></p></div>`;
   const input = $("input", host);
   const button = $("button", host);
   const msg = $(".up-msg", host);
+  const prog = $(".up-prog", host);
   let busy = false;
   let alive = true;
   const say = (text, kind = "") => { msg.textContent = text; msg.className = `up-msg ${kind}`; msg.setAttribute("role", kind === "bad" ? "alert" : "status"); };
@@ -54,7 +56,7 @@ function mountUploader(host, { uploadType, itemId, sessionNo, label, cta, ghost 
     const problem = SubmissionStorage.problem(input.value);
     if (problem) { input.setAttribute("aria-invalid", "true"); return say(problem, "bad"); }
     input.removeAttribute("aria-invalid");
-    busy = true; button.disabled = true; input.disabled = true; button.textContent = "Saving…"; say("");
+    busy = true; button.disabled = true; input.disabled = true; button.textContent = "Saving…"; prog.hidden = false; say("");
     try {
       const answer = await SubmissionStorage.send({ uploadType, itemId, sessionNo }, input.value);
       if (!alive) return;
@@ -64,10 +66,35 @@ function mountUploader(host, { uploadType, itemId, sessionNo, label, cta, ghost 
     } catch (e) {
       if (alive) say(e.message || "Couldn't submit. Please try again.", "bad");
     } finally {
-      if (alive) { busy = false; button.disabled = false; input.disabled = false; button.textContent = cta; }
+      if (alive) { busy = false; button.disabled = false; input.disabled = false; button.textContent = cta; prog.hidden = true; }
     }
   }
   button.addEventListener("click", submit);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
   return { destroy() { alive = false; } };
+}
+
+/**
+ * One upload item inside Activities (for example the Founder homework): its status (name, time, Submitted) and the control to submit or replace.
+ * The item is done only when the server accepted the link, so there is no manual "mark done". Redraws whenever progress changes. Returns { destroy }.
+ */
+function mountUploadItem(host, { sessionId, sessionNo, slot, cta, hint }) {
+  let uploader = null;
+  const draw = () => {
+    const sub = Founders.uploadsOf(sessionId)[slot] ?? null;
+    uploader?.destroy();
+    host.innerHTML = `<div class="ui-status">${submissionStatusHtml(sub)}</div>${hint ? `<p class="ui-hint">${esc(hint)}</p>` : ""}${sub?.status === "approved" ? "" : '<div data-up></div>'}`;
+    const up = $("[data-up]", host);
+    if (up) {
+      uploader = mountUploader(up, {
+        uploadType: "activity", itemId: `${sessionId}|${slot}`, sessionNo, label: slot, cta: sub ? "Replace link" : cta, ghost: !!sub,
+        onSubmitted: (answer) => Founders.recordUpload(sessionId, slot, answer.submission),
+      });
+    }
+  };
+  draw();
+  const sig = () => JSON.stringify(Founders.uploadsOf(sessionId)[slot] ?? null);
+  let last = sig();
+  const unwatch = Founders.watch(() => { const now = sig(); if (now !== last) { last = now; draw(); } }); // other progress changes must not wipe a link being typed
+  return { destroy() { unwatch(); uploader?.destroy(); } };
 }

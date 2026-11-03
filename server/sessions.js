@@ -79,12 +79,14 @@ const describe = (activities) => {
 function buildSessions(rows) {
   const byNo = new Map(defaults.map((d) => [d.no, { ...d }]));
   const base1 = byNo.get(1);
-  Object.assign(base1, { name: s1.session.title, date: s1.session.date, time: s1.session.time, activities: s1.activities.games.map((g) => g.title).join("\n") });
+  const nativeSlots = s1.activities.uploads.map((u) => u.slot).join("\n"); // Session 1's upload items live in its content, not in the Sheet
+  Object.assign(base1, { name: s1.session.title, date: s1.session.date, time: s1.session.time, activities: s1.activities.games.map((g) => g.title).join("\n"), uploadSlots: nativeSlots });
   for (const r of rows) {
     const no = Number(r.sessionNo);
     if (!Number.isInteger(no) || no < 1) continue;
     const cur = byNo.get(no) ?? { no };
     for (const k of ["name", "phase", "date", "time", "duration", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"]) {
+      if (no === 1 && k === "uploadSlots") continue;
       if (String(r[k] ?? "").trim() !== "") cur[k] = String(r[k]);
     }
     if (String(r.visible ?? "").trim() !== "") cur.visible = isTrue(r.visible);

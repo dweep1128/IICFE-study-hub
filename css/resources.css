@@ -50,9 +50,6 @@
 .rs-read > * { max-width: 1000px; margin-left: auto; margin-right: auto; }
 .rs-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
 .rs-head h1 { margin: 0; font: 400 2.25rem/1.1 var(--font-display); letter-spacing: .005em; }
-.rs-mentors { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
-.rs-chip { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: var(--text); font: 500 .875rem/1.5 var(--font-body); cursor: default; }
-.rs-av { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--teal-tint); color: var(--teal); font: 600 .6875rem var(--font-body); }
 .rs-sub { max-width: 64ch; margin-top: 8px; color: var(--text-muted); font-size: .9375rem; line-height: 1.5; }
 
 .rs-tabs { position: relative; display: flex; gap: 32px; margin-top: 12px; margin-bottom: 32px; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }

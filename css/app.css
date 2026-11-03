@@ -26,8 +26,8 @@
 .side-nav a:hover { background: var(--surface-2); }
 .tile { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: var(--teal-tint); color: var(--teal); transition: background .2s, color .2s; }
 .tile svg { width: 19px; height: 19px; }
-.side-nav a[aria-current="page"] { background: var(--gold-tint); font-weight: 600; }
-.side-nav a[aria-current="page"] .tile { background: var(--gold); color: var(--on-gold); }
+.side-nav a[aria-current="page"] { background: var(--sage-tint); font-weight: 600; }
+.side-nav a[aria-current="page"] .tile { background: var(--teal); color: var(--on-teal); }
 
 /* profile footer: pinned to the bottom of the sidebar */
 .profile { position: relative; flex: none; display: flex; align-items: center; gap: 4px; height: 64px; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); }

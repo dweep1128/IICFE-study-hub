@@ -35,6 +35,8 @@ const Founders = (() => {
   const store = new Map(); // storageKey -> value ({id:true,...} for notes, {team,pts,done} for activities, true for practice, the exam result {score, n, seconds})
   const examState = new Map(); // sessionId -> "none" | "in_progress" | "submitted"
   const writable = new Map(); // storageKey -> { sessionId, part } for the keys the browser may save
+  const uploads = new Map(); // sessionId -> { <upload item>: submission view } (written by the server when a link is submitted)
+  const practiceInfo = new Map(); // sessionId -> { score, total, best, attempts } of the Practice Test
   const pending = new Map(); // storageKey -> { value, tries, timer }
   let loaded = false;
   let lastRefresh = 0;
@@ -58,6 +60,8 @@ const Founders = (() => {
       put(itemOf(manifest, s.id, "practice"), sp.practice?.done ? true : null);
       put(itemOf(manifest, s.id, "real-test"), sp.exam?.state === "submitted" ? { score: sp.exam.score, n: sp.exam.total, seconds: sp.exam.seconds } : null);
       examState.set(s.id, sp.exam?.state ?? "none");
+      uploads.set(s.id, sp.uploads ?? {});
+      practiceInfo.set(s.id, sp.practice?.done ? { score: sp.practice.score, total: sp.practice.total, best: sp.practice.best, attempts: sp.practice.attempts } : null);
     }
   }
 
@@ -112,11 +116,19 @@ const Founders = (() => {
   });
 
   // ---------- results the server computed (tests.js passes them in; the browser can't write these parts) ----------
-  function recordPractice(sessionId) {
+  function recordPractice(sessionId, result) {
     const item = manifestSync()?.sessions.find((s) => s.id === sessionId)?.items.find((i) => i.key === "practice");
     if (item) store.set(item.storageKey, true);
+    if (result) practiceInfo.set(sessionId, { score: result.score, total: result.total, best: result.best, attempts: result.attempts });
     changed();
   }
+  // An upload item (a link the student submitted) is done only once the server accepted it; this mirrors the server's answer.
+  function recordUpload(sessionId, slot, submission) {
+    uploads.set(sessionId, { ...uploads.get(sessionId), [slot]: submission });
+    changed();
+  }
+  const uploadsOf = (sessionId) => uploads.get(sessionId) ?? {};
+  const uploadCount = (sessionId, slots = []) => slots.filter((slot) => uploadsOf(sessionId)[slot] && uploadsOf(sessionId)[slot].status !== "changes_requested").length;
   // state: "in_progress" | "submitted" (with the result: { score, n, seconds })
   function recordExam(sessionId, state, result) {
     const item = manifestSync()?.sessions.find((s) => s.id === sessionId)?.items.find((i) => i.key === "real-test");
@@ -137,7 +149,12 @@ const Founders = (() => {
     switch (item.key) {
       // have / need = parts finished out of parts required; the Final Exam's Requirements page and its progress bar read them.
       case "study-notes": return { started, done: allTrue(v, item.requires), have: countTrue(v, item.requires), need: item.requires.length };
-      case "activities": return { started, done: allTrue(v?.done, item.requires), have: countTrue(v?.done, item.requires), need: item.requires.length };
+      // Games are ticked by playing them; upload items count only after a successful submit (never by a manual tick).
+      case "activities": {
+        const slots = item.uploads ?? [];
+        const have = countTrue(v?.done, item.requires) + uploadCount(sessionId, slots), need = item.requires.length + slots.length;
+        return { started: started || have > 0, done: have === need, have, need };
+      }
       case "practice": return { started, done: v === true, have: v === true ? 1 : 0, need: 1 };
       case "real-test": return { started: started || examState.get(sessionId) === "in_progress", done: !!v, score: v && Number.isFinite(v.score) ? { score: v.score, total: v.n } : null };
       default: return { started, done: false };
@@ -198,12 +215,27 @@ const Founders = (() => {
     const missing = reqs.filter((r) => !r.done);
     return { unlocked, open, locked: !open, requirements: reqs, missing, have, need, nextRequirement: missing[0] ?? null,
       // "Finish Activities to unlock the Final Exam"
+      pending: missing.map((r) => (r.key === "practice" ? r.label : `${r.label} ${r.have}/${r.need}`)),
       hint: missing.length ? `Finish ${missing.map((r) => r.label).join(" and ")} to unlock the Final Exam` : "" };
   }
 
-  // Every step lives under Sessions: "#sessions/1/study-notes", "#sessions/1/practice", "#sessions/1/real-test".
-  const hash = (manifest, sessionId, key) => `#sessions/${manifest.sessions.findIndex((s) => s.id === sessionId) + FIRST_SESSION_NO}/${key}`;
-  const href = (manifest, sessionId, key) => `course.html?id=${COURSE_ID}${hash(manifest, sessionId, key)}`;
+  // The one "how far along am I" number for a session, shared by the session page's sidebar and the Sessions list.
+  // `video` is null (no lecture) or { watched }. The Final Exam counts as one part, the Practice Test as another.
+  function sessionPercent(ss, video) {
+    const get = (k) => ss.items.find((it) => it.key === k);
+    const [notes, acts, practice, exam] = ["study-notes", "activities", "practice", "real-test"].map(get);
+    const total = (video ? 1 : 0) + notes.need + acts.need + 2;
+    const done = (video?.watched ? 1 : 0) + notes.have + acts.have + (practice.done ? 1 : 0) + (exam.done ? 1 : 0);
+    return total ? Math.round((done / total) * PCT) : 0;
+  }
+
+  // A session has its own page, session.html?course=F001&s=1, and the step is its hash: #notes, #activities, #tests/practice, #tests/final.
+  const STEP_HASH = { "study-notes": "notes", activities: "activities", practice: "tests/practice", "real-test": "tests/final", overview: "overview" };
+  const hash = (manifest, sessionId, key) => `#${STEP_HASH[key] ?? key}`;
+  const href = (manifest, sessionId, key) => {
+    const no = manifest.sessions.findIndex((s) => s.id === sessionId) + FIRST_SESSION_NO;
+    return `session.html?course=${COURSE_ID}&s=${no}${key ? hash(manifest, sessionId, key) : ""}`;
+  };
   const fileUrl = (item) => `${CONTENT_BASE}${item.file}`;
 
   // Coming back to this window re-reads the server (another browser may have moved on), at most every REFRESH_MIN_MS.
@@ -219,5 +251,5 @@ const Founders = (() => {
   // The lab API for one session (practice, exam). `api` redirects to sign-in on 401 and throws an Error with the server's message otherwise.
   const lab = (sessionId, path, opts) => api(`${LAB_API}/${sessionId}/${path}`, opts);
 
-  return { COURSE_ID, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam };
+  return { COURSE_ID, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam, recordUpload, uploadsOf, sessionPercent, practiceInfo: (id) => practiceInfo.get(id) ?? null };
 })();

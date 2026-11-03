@@ -320,8 +320,14 @@ const ActivitiesView = (() => {
     let cleanups = [];
     const all = (sel) => [...$$(sel, host), ...$$(sel, ctx.panelHost)]; // the stats and list live in the side panel and the narrow-screen dropdown
     const save = () => Founders.writeKey(key, { ...base(), team: S.team, pts: S.pts, done: S.done });
-    const doneCount = () => cfg.games.filter((g) => S.done[g.id]).length;
-    const allDone = () => doneCount() === cfg.games.length;
+    const uploads = cfg.uploads ?? []; // items that need a submitted file: done only once the server has recorded the upload
+    const upDone = (u) => { const sub = Founders.uploadsOf(ctx.session.id)[u.slot]; return !!sub && sub.status !== "changes_requested"; };
+    const gamesDone = () => cfg.games.filter((g) => S.done[g.id]).length;
+    const doneCount = () => gamesDone() + uploads.filter(upDone).length;
+    const totalCount = () => cfg.games.length + uploads.length;
+    const allDone = () => doneCount() === totalCount();
+    const uploadWidgets = [];
+    let redraw = null; // set by build(); progress changes (an upload recorded) repaint the counts and the list
     const runCleanups = () => { cleanups.forEach((fn) => fn()); cleanups = []; };
 
     function build() {
@@ -329,10 +335,14 @@ const ActivitiesView = (() => {
         <li><button type="button" class="toc-item${S.done[g.id] ? " is-done" : ""}" data-pick="${esc(g.id)}"${openId === g.id ? ' aria-current="true"' : ""}>
           <span class="toc-n" aria-hidden="true">${S.done[g.id] ? CHECK : g.no}</span><span class="toc-t">${h(g.title)}</span>${S.done[g.id] ? '<span class="sr-only">(done)</span>' : ""}</button></li>`).join("");
 
+      const upItems = () => uploads.map((u, i) => `
+        <li><button type="button" class="toc-item${upDone(u) ? " is-done" : ""}" data-pick-up="${i}">
+          <span class="toc-n" aria-hidden="true">${upDone(u) ? CHECK : u.no}</span><span class="toc-t">${h(u.title)}<small class="sd-sub">${upDone(u) ? "Submitted" : "Needs upload"}</small></span>${upDone(u) ? '<span class="sr-only">(submitted)</span>' : ""}</button></li>`).join("");
+
       // Side panel: this page's navigation (the games) plus the team's points and streak, on its own tinted surface.
       ctx.panelHost.innerHTML = `<nav aria-label="Games">
         <p class="rs-ph-t">${h(ctx.item.label)}</p><p class="rs-ph-s" data-hud="sum"></p>
-        <div class="nt-track" role="progressbar" aria-label="Games done" aria-valuemin="0" aria-valuemax="${cfg.games.length}"><i data-prog-fill></i></div>
+        <div class="nt-track" role="progressbar" aria-label="Activities done" aria-valuemin="0" aria-valuemax="${totalCount()}"><i data-prog-fill></i></div>
         <dl class="ac-sum"><div><dt>Points</dt><dd data-hud="pts"></dd></div><div><dt>Streak</dt><dd data-hud="streak"></dd></div></dl>
         <ol class="toc-list" data-games></ol></nav>`;
 
@@ -350,7 +360,13 @@ const ActivitiesView = (() => {
               <div class="ac-game-a"><span class="ac-done" hidden>${CHECK}Done</span><button type="button" class="btn-pill solid sm" data-play>Play</button>
                 <button type="button" class="link-btn" data-close hidden>Back to games</button></div></div>
             <div class="ac-play" hidden></div></section>`).join("")}</div>
-        <p class="ac-allnote" data-allnote role="status" hidden>${CHECK}<span>All four activities done.</span></p>
+        ${uploads.map((u, i) => `
+          <section class="ac-game ac-up" id="ac-up-${i}" aria-labelledby="ac-up-${i}-h">
+            <div class="ac-game-h"><span class="ac-no" aria-hidden="true">${u.no}</span>
+              <div class="ac-game-t"><h2 id="ac-up-${i}-h">${h(u.title)}</h2><p>${h(u.blurb)}</p></div>
+              <span class="ac-done" hidden>${CHECK}Submitted</span></div>
+            <div class="ac-up-body" data-upload="${i}"></div></section>`).join("")}
+        <p class="ac-allnote" data-allnote role="status" hidden>${CHECK}<span>All activities done.</span></p>
         <p class="ac-reset"><button type="button" class="link-btn" data-reset>Reset team score</button></p>
       </div>`;
 
@@ -359,11 +375,12 @@ const ActivitiesView = (() => {
       const hud = () => {
         all('[data-hud="pts"]').forEach((el) => { el.textContent = S.pts; });
         all('[data-hud="streak"]').forEach((el) => { el.textContent = streak; });
-        all('[data-hud="sum"]').forEach((el) => { el.textContent = `${doneCount()} of ${cfg.games.length} done`; });
-        all("[data-prog-fill]").forEach((el) => { el.style.width = `${(doneCount() / cfg.games.length) * 100}%`; });
+        all('[data-hud="sum"]').forEach((el) => { el.textContent = `${doneCount()} of ${totalCount()} done`; });
+        all("[data-prog-fill]").forEach((el) => { el.style.width = `${(doneCount() / totalCount()) * 100}%`; });
         all(".nt-track").forEach((el) => el.setAttribute("aria-valuenow", doneCount()));
-        const sig = `${cfg.games.map((g) => (S.done[g.id] ? 1 : 0)).join("")}|${openId}`;
-        if (sig !== listSig) { listSig = sig; all("[data-games]").forEach((ol) => { ol.innerHTML = gameItems(); }); }
+        const sig = `${cfg.games.map((g) => (S.done[g.id] ? 1 : 0)).join("")}${uploads.map((u) => (upDone(u) ? 1 : 0)).join("")}|${openId}`;
+        if (sig !== listSig) { listSig = sig; all("[data-games]").forEach((ol) => { ol.innerHTML = gameItems() + upItems(); }); }
+        uploads.forEach((u, i) => { $(`#ac-up-${i}`, host).classList.toggle("is-done", upDone(u)); $(`#ac-up-${i} .ac-done`, host).hidden = !upDone(u); });
         for (const g of cfg.games) {
           const sec = $(`#ac-${g.id}`, host), d = !!S.done[g.id];
           sec.classList.toggle("is-done", d);
@@ -421,8 +438,14 @@ const ActivitiesView = (() => {
         }
       }
 
+      const pickUpload = (i) => { const sec = $(`#ac-up-${i}`, host); sec.scrollIntoView({ behavior: motionOk() ? "smooth" : "auto", block: "start" }); $("h2", sec).setAttribute("tabindex", "-1"); $("h2", sec).focus({ preventScroll: true }); };
       const pickGame = (id) => start(cfg.games.find((g) => g.id === id), $(`#ac-${id}`, host));
-      ctx.panelHost.addEventListener("click", (e) => { const pick = e.target.closest("[data-pick]"); if (pick) pickGame(pick.dataset.pick); });
+      ctx.panelHost.addEventListener("click", (e) => {
+        const pick = e.target.closest("[data-pick]");
+        if (pick) return pickGame(pick.dataset.pick);
+        const up = e.target.closest("[data-pick-up]");
+        if (up) pickUpload(Number(up.dataset.pickUp));
+      });
       host.querySelector(".ac").addEventListener("click", (e) => {
         if (e.target.closest("[data-close]")) return closeGame();
         const pick = e.target.closest("[data-pick]");
@@ -440,20 +463,24 @@ const ActivitiesView = (() => {
         }
       });
       $(".ac-team input", host).addEventListener("input", (e) => { S.team = e.target.value.trim().slice(0, TEAM_NAME_MAX); save(); hud(); });
+      uploadWidgets.splice(0).forEach((w) => w.destroy());
+      uploads.forEach((u, i) => uploadWidgets.push(mountUploadItem($(`[data-upload="${i}"]`, host), { sessionId: ctx.session.id, sessionNo: ctx.sessionNo, slot: u.slot, cta: u.cta, hint: u.hint })));
+      redraw = hud;
       hud();
     }
 
     build();
     return {
-      badge: () => `${cfg.games.filter((g) => base().done?.[g.id]).length}/${cfg.games.length}`,
-      isComplete: () => cfg.games.every((g) => base().done?.[g.id]),
+      badge: () => `${doneCount()}/${totalCount()}`,
+      isComplete: () => allDone(),
       // Our own saves also trigger this; only rebuild when another tab changed the saved score (never mid-game).
       refresh() {
+        redraw?.();
         const b = base();
         if (b.pts === S.pts && JSON.stringify(b.done ?? {}) === JSON.stringify(S.done)) return;
         S = { ...S, ...b, done: b.done ?? {} }; runCleanups(); build();
       },
-      destroy: runCleanups,
+      destroy() { runCleanups(); uploadWidgets.splice(0).forEach((w) => w.destroy()); },
     };
   }
 

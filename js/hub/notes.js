@@ -168,7 +168,7 @@ const NotesView = (() => {
     // Side panel: this page's navigation on its own tinted surface. The only progress bar for the page.
     ctx.panelHost.innerHTML = `<nav aria-label="Study notes contents">
       <p class="rs-ph-t">${h(ctx.item.label)}</p><p class="rs-ph-s" data-prog-text></p>
-      <div class="nt-track" role="progressbar" aria-label="Sections done" aria-valuemin="0" aria-valuemax="${sections.length}"><i data-prog-fill></i></div>
+      <div class="nt-track" role="progressbar" aria-label="Sections done" aria-valuemin="0" aria-valuemax="${required.length}"><i data-prog-fill></i></div>
       <ol class="toc-list" data-toc></ol></nav>`;
 
     host.innerHTML = `<details class="nt-toc-m"><summary><span>Contents</span><small data-m-count></small></summary>
@@ -179,8 +179,8 @@ const NotesView = (() => {
             <header class="nt-sec-h"><p class="nt-part">${h(s.tag)}</p><h2 id="nt-${esc(s.id)}-h" tabindex="-1">${h(s.title)}</h2></header>
             <div class="nt-body">${layoutSection(s, blockCtx)}</div>
             <footer class="nt-sec-f">
-              <button type="button" class="nt-done-btn" aria-pressed="false" data-done="${esc(s.id)}"><span class="bx" aria-hidden="true">${CHECK}</span>Mark as done</button>
-              <span class="nt-xp" role="status"></span>
+              ${s.required ? `<button type="button" class="nt-done-btn" aria-pressed="false" data-done="${esc(s.id)}"><span class="bx" aria-hidden="true">${CHECK}</span>Mark as done</button>
+              <span class="nt-xp" role="status"></span>` : ""}
               ${nextOf(i) ? `<button type="button" class="next-link" data-go="${esc(nextOf(i).id)}">Next: ${h(nextOf(i).title)} <span aria-hidden="true">→</span></button>` : ""}
             </footer>
           </section>`).join("")}
@@ -197,13 +197,13 @@ const NotesView = (() => {
     const draw = () => {
       const done = readDone();
       const got = sections.reduce((n, s) => n + (done[s.id] ? s.xp : 0), 0);
-      const count = sections.filter((s) => done[s.id]).length;
+      const count = required.filter((id) => done[id]).length; // only the required notes count, the same as the session page and the sessions list
       all("[data-toc]").forEach((ol) => { ol.innerHTML = tocItems(done); });
-      all("[data-prog-text]").forEach((el) => { el.textContent = `${count} of ${sections.length} done`; el.title = `${got} / ${totalXp} XP`; });
-      all("[data-prog-fill]").forEach((el) => { el.style.width = `${pct(count, sections.length)}%`; });
+      all("[data-prog-text]").forEach((el) => { el.textContent = `${count} of ${required.length} done`; el.title = `${got} / ${totalXp} XP`; });
+      all("[data-prog-fill]").forEach((el) => { el.style.width = `${pct(count, required.length)}%`; });
       all(".nt-track").forEach((el) => el.setAttribute("aria-valuenow", count));
-      $("[data-m-count]", host).textContent = `${count} of ${sections.length} done`;
-      for (const s of sections) $(`[data-done="${s.id}"]`, host).setAttribute("aria-pressed", !!done[s.id]);
+      $("[data-m-count]", host).textContent = `${count} of ${required.length} done`;
+      for (const id of required) $(`[data-done="${id}"]`, host).setAttribute("aria-pressed", !!done[id]);
       markCurrent();
     };
 
@@ -249,7 +249,7 @@ const NotesView = (() => {
 
     draw();
     return {
-      badge: () => { const d = readDone(); return `${sections.filter((s) => d[s.id]).length}/${sections.length}`; },
+      badge: () => { const d = readDone(); return `${required.filter((id) => d[id]).length}/${required.length}`; },
       isComplete: () => { const d = readDone(); return required.every((id) => d[id]); },
       refresh: draw,
       destroy: () => spy.disconnect(),

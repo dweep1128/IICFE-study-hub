@@ -281,7 +281,7 @@ const TestsView = (() => {
       } catch (e) {
         return active.fail(e.message || "Couldn't check your answers. Please try again.");
       }
-      Founders.recordPractice(session.id);
+      Founders.recordPractice(session.id, result);
       finish(st, result);
     }
 
@@ -303,14 +303,14 @@ const TestsView = (() => {
       ui.main.innerHTML = `<div class="ts-col">
         ${resultCard({ sc, n, title: verdict(sc, n), note: "Your practice result is saved. You can retake it as often as you like." })}
         <section class="ts-status${ready ? " is-ready" : ""}" aria-label="Final Exam requirements"><span class="ts-tick" aria-hidden="true">${CHECK}</span>
-          <p>${ready ? "You're ready. The Final Exam is unlocked." : "Practice done. Finish the rest of Resources to unlock the Final Exam"}</p>
+          <p>${ready ? "You're ready. The Final Exam is unlocked." : "Practice done. Finish your Study Notes and Activities to unlock the Final Exam"}</p>
           ${ready ? `<a class="btn-pill solid" href="${esc(Founders.hash(Hub.manifest, session.id, "real-test"))}">Go to Final Exam</a>` : ""}</section>
         <h2 class="ts-h2 spaced">Review every answer</h2><ol class="ts-rv">${review}</ol>
         <button type="button" class="btn-pill ts-big" data-again>Try a new shuffle</button></div>`;
       $("[data-again]", ui.main).addEventListener("click", begin);
       animateRing(ui.main);
       ui.focusHeading();
-      ui.say(`Practice finished. You scored ${sc} out of ${n}. ${ready ? "The Final Exam is unlocked." : "Finish the rest of Resources to unlock the Final Exam."}`);
+      ui.say(`Practice finished. You scored ${sc} out of ${n}. ${ready ? "The Final Exam is unlocked." : "Finish your Study Notes and Activities to unlock the Final Exam."}`);
       celebrate(sc, n);
     }
 

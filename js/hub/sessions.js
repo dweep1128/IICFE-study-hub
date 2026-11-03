@@ -1,5 +1,5 @@
-// Sessions: the timeline (#sessions) and each session's page (#sessions/<no>/<tab>).
-// Session 1 is the native one: js/hub/session.js lays it out (Study Notes, Activities, Practice Test, Final Exam, then the tabs below).
+// Sessions: the timeline (#sessions) and the page of a session that has no content file of its own (#sessions/<no>/<tab>).
+// Session 1 is the native one and has its own page, session.html (js/hub/session.js); "Open session" goes there.
 // Every other visible session uses the old portal's page: header, step bar, a sticky tab row, then Reading, Activities and uploads, Quiz,
 // Output, Recap. The server decides what is visible, grades quizzes and keeps the answer keys; this file only draws what it returns.
 const PITCH_SECONDS = 3 * 60;
@@ -7,7 +7,6 @@ const PITCH_WARN_SECONDS = 30;
 const QUIZ_SKIPPED = -1;
 const LETTERS = ["A", "B", "C", "D"];
 const TBD = "TBD";
-const sessionsApi = (path = "") => `/api/courses/${Founders.COURSE_ID}/lab/sessions${path}`;
 
 // ---------- small pieces ----------
 const stepText = (s) => `${s.label} ${s.key === "uploads" ? `${s.count}/${s.total}` : s.done ? "✓" : "–"}`;
@@ -16,7 +15,19 @@ function stepBarHtml(steps, lab) {
   const done = steps.filter((s) => s.done).length;
   return `<div class="ss-prog">${steps.length ? `<div class="ss-bar" role="progressbar" aria-label="${done} of ${steps.length} steps complete" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${done}"><i style="width:${(done / steps.length) * 100}%"></i></div>
     <p class="ss-steps">${done}/${steps.length} · ${steps.map(stepText).join(" · ")}</p>` : ""}
-    ${lab ? `<p class="ss-steps">notes ${Math.min(lab.notes.have, lab.notes.need)}/${lab.notes.need} · games ${lab.games.have}/${lab.games.need} · practice ${lab.practice ? "✓" : "–"} · final exam ${lab.exam === "submitted" ? "✓" : lab.exam === "in_progress" ? "in progress" : "–"}</p>` : ""}</div>`;
+</div>`;
+}
+// A native session's card line. Every number comes from Founders.summary(), the same source as the session page's sidebar.
+function nativeMetaHtml(card, manifest) {
+  const ss = Founders.summary(manifest).sessions[card.no - 1];
+  const it = (k) => ss.items.find((x) => x.key === k);
+  const [notes, acts, exam] = [it("study-notes"), it("activities"), it("real-test")];
+  const practice = Founders.practiceInfo(ss.id);
+  const pct = Founders.sessionPercent(ss, card.lab.video);
+  const practiceText = practice ? `${practice.best ?? practice.score}/${practice.total}` : "–";
+  const finalText = exam.done ? (exam.score ? `${exam.score.score}/${exam.score.total}` : "✓") : exam.started ? "in progress" : "–";
+  return `<div class="ss-prog"><div class="ss-bar" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+    <p class="ss-steps">Notes ${notes.have}/${notes.need} · Activities ${acts.have}/${acts.need} · Tests (Practice ${practiceText}, Final ${finalText})</p></div>`;
 }
 // The Sheet may hold an ISO day or free text ("TBD", "1 Oct 2026"); only an ISO day is reformatted.
 const dayText = (d) => (/^d{4}-d{2}-d{2}$/.test(d) ? fmtDate(d) : d);
@@ -28,68 +39,20 @@ function markerHtml(s) {
   return `<div class="sl-mark"><span class="sl-dot${open ? " is-open" : ""}">${String(s.no).padStart(2, "0")}</span>
     <div class="sl-when"><b>${esc(open ? dayText(s.date) || TBD : TBD)}</b><small>${esc(open ? s.duration || s.time || TBD : TBD)}</small></div></div>`;
 }
-function timelineHtml(sessions) {
+function timelineHtml(sessions, manifest) {
   return `<ol class="sl">${sessions.map((s) => `<li>${markerHtml(s)}${s.visible
     ? `<div class="sl-card">${s.phase ? `<span class="pt-tag is-active">${esc(s.phase)}</span>` : ""}<h2>${esc(s.name)}</h2>${s.description ? `<p>${esc(s.description)}</p>` : ""}
-        <div class="sl-foot">${stepBarHtml(s.steps, s.lab)}<a class="btn-pill solid" href="#sessions/${s.no}">Open session <span aria-hidden="true">→</span></a></div></div>`
+        <div class="sl-foot">${s.lab && manifest ? nativeMetaHtml(s, manifest) : stepBarHtml(s.steps)}<a class="btn-pill solid" href="${s.lab && manifest ? esc(Founders.href(manifest, `s${s.no}`)) : `#sessions/${s.no}`}">Open session <span aria-hidden="true">→</span></a></div></div>`
     : `<div class="sl-card is-locked">${icon("lock")}<p>${esc(s.name)}</p><span class="pt-tag is-neutral">Coming soon</span></div>`}</li>`).join("")}</ol>`;
 }
-async function mountTimeline(el) {
+async function mountTimeline(el, manifest) {
   const { sessions } = await api(sessionsApi());
   el.className = "pt-page pt-stagger";
   el.innerHTML = `<header class="tk-head"><p class="pt-eyebrow is-gold">Sessions</p><h1 class="pt-h2">Your session plan.</h1>
-    <p class="tk-sub">Open a session for its activities, uploads, quiz and recap. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(sessions)}`;
-}
-
-// ---------- the video lecture ----------
-// The server sends an embed address only for YouTube, Vimeo or Google Drive links (server/sessions.js), with no autoplay. Without one: a calm placeholder.
-const PLAY = '<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>';
-function playerHtml(video, title) {
-  if (video) {
-    return `<div class="sd-frame"><iframe src="${esc(video.embedUrl)}" title="${esc(video.title || `Video lecture: ${title}`)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
-      allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
-  }
-  return `<div class="sd-frame is-empty" role="img" aria-label="Video lecture coming soon"><div class="sd-ph"><span class="sd-ph-ic">${PLAY}</span>
-    <p class="sd-ph-t">Video lecture coming soon</p><p class="sd-ph-s">${esc(title)}</p></div></div>`;
-}
-// "Mark video as watched": a toggle saved on the server with the rest of the lab progress. Progress only; it is not part of the Final Exam gate.
-function mountVideoControl(host, st) {
-  if (!st.video) { host.innerHTML = ""; return noop; }
-  host.innerHTML = '<button type="button" class="sd-watch" aria-pressed="false"><span class="sd-watch-box" aria-hidden="true"></span><span data-t></span></button><span class="ss-err" role="alert" data-err></span>';
-  const btn = $(".sd-watch", host), err = $("[data-err]", host);
-  const draw = () => { btn.setAttribute("aria-pressed", String(st.videoWatched === true)); $("[data-t]", btn).textContent = st.videoWatched ? "Watched" : "Mark video as watched"; };
-  draw();
-  btn.addEventListener("click", async () => {
-    const next = !st.videoWatched;
-    btn.disabled = true; err.textContent = "";
-    st.videoWatched = next; draw(); // shown at once; put back if the server refuses
-    try { await api(sessionsApi(`/${st.no}/video`), { method: "POST", body: { watched: next } }); await st.reload().catch(() => {}); }
-    catch (ex) { st.videoWatched = !next; err.textContent = ex.message || "Could not save. Try again."; }
-    btn.disabled = false; draw(); st.changed();
-  });
-  const unwatch = st.watch(draw);
-  return { destroy: unwatch };
-}
-
-// ---------- state shared by one open session ----------
-// The server is the source of truth: after a tick, an upload or a quiz the steps are re-read from it.
-function makeSessionState(detail) {
-  const watchers = new Set();
-  const state = {
-    ...detail,
-    watch: (fn) => { watchers.add(fn); return () => watchers.delete(fn); },
-    changed: () => watchers.forEach((fn) => fn()),
-    async reload() {
-      const fresh = await api(sessionsApi(`/${detail.no}`));
-      Object.assign(state, { steps: fresh.steps, ticked: fresh.ticked, submissions: fresh.submissions, quizResult: fresh.quizResult, videoWatched: fresh.videoWatched });
-      state.changed();
-    },
-  };
-  return state;
+    <p class="tk-sub">Open a session for its video, notes, activities and tests. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(sessions, manifest)}`;
 }
 
 // ---------- tab contents: each mounts into `host` and returns { destroy } ----------
-const noop = { destroy() {} };
 const dashed = (title, sub) => `<div class="ss-card is-dashed"><p class="ss-card-t">${esc(title)}</p>${sub ? `<p class="ss-card-s">${esc(sub)}</p>` : ""}</div>`;
 
 function mountReading(host, st) {
@@ -256,24 +219,23 @@ function mountGeneric(el, st, tab) {
 
 // ---------- the panel ----------
 const Sessions = {
-  // True while Session 1 (the native one) is open: it uses the full-width reading layout with the app's icon rail.
-  wantsRail: () => !!Hub.manifest && Number(hashParts()[1]) === 1,
-  // A tab change inside an open session: switch in place so a quiz or a game in progress survives.
+  // A tab change inside an open session: switch in place so a quiz in progress survives.
   go(parts) {
     const no = Number(parts[0]);
     if (activeGeneric?.no === no) { activeGeneric.select(parts[1]); return true; }
-    return Resources.go(parts);
+    return false;
   },
 };
 
 Panels.sessions = async (el, hub) => {
   const parts = hashParts().slice(1);
-  if (!parts[0]) return mountTimeline(el);
+  if (!parts[0]) return mountTimeline(el, hub.manifest);
   const no = Number(parts[0]);
   if (!Number.isInteger(no) || no < 1) return notAvailableYet(el);
+  // Old bookmarks (#sessions/1/study-notes) and links to a native session open its own page.
+  if (hub.manifest?.sessions[no - 1]?.data) { location.replace(Founders.href(hub.manifest, `s${no}`, parts[1])); return; }
   let detail;
   try { detail = await api(sessionsApi(`/${no}`)); } catch (e) { if (e.status === 404) return notAvailableYet(el); throw e; } // locked and unknown sessions are both a 404
   const st = makeSessionState(detail);
-  if (hub.manifest?.sessions[no - 1]?.data) return Resources.mount(el, hub, parts, st);
   return mountGeneric(el, st, parts[1]);
 };

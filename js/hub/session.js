@@ -1,248 +1,289 @@
-// Session 1's page (course.html#sessions/1/...), laid out like a course player: the video lecture on top, the tab bar under it, and a
-// "Session content" list on the right (the video, the study-note sections, the games, the Practice Test and the Final Exam, with ticks).
-// Content comes from the session's data file (manifest session.data, e.g. content/founders-lab/s1/session.json); each manifest item with a
-// `view` name is rendered by the matching view below. The server keeps every rule: the Final Exam unlock, the clock, the answer keys.
-// The Sessions timeline and every other session live in js/hub/sessions.js.
-const Resources = (() => {
+// The session page: session.html?course=F001&s=1#overview | #notes | #activities | #tests[/practice|/final]
+// Left: the session content panel (back button, progress, video, notes, activities, tests). Right: the video, the title and four tabs.
+// Content comes from the session's data file (manifest session.data); the notes, the activities and the tests are the existing views
+// (notes.js, activities.js, tests.js). Every count and tick is read from Founders.summary(), the same source as the Sessions list.
+// The server keeps every rule: the Final Exam unlock, the clock, the answer keys, and whether an upload is recorded.
+const CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
+
+(() => {
+  const SIDE_KEY = "iicfe-session-side"; // "closed" when the student hid the panel on a wide screen
   const KEYS = { left: "ArrowLeft", right: "ArrowRight", home: "Home", end: "End" };
-  const WIDE_PX = 1000; // the page's width from which the content list sits beside the lesson (matches the @container rs rules in portal.css)
-  const PCT = 100;
-  const dataCache = new Map();
-  let active = null; // { manifest, no, select(key) }
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "notes", label: "Study Notes", key: "study-notes" },
+    { id: "activities", label: "Activities", key: "activities" },
+    { id: "tests", label: "Tests" },
+  ];
+  const TEST_KEY = { practice: "practice", final: "real-test" };
+  const allSessionsHref = () => `course.html?id=${Founders.COURSE_ID}#sessions`;
 
-  // A tab that mounts one of the session's extra panes (plan, output, recap).
-  const extraView = (mountPane) => ({
-    mount(host, ctx) {
-      const pane = mountPane(host, ctx.state);
-      return { badge: () => "", refresh() {}, destroy: pane.destroy };
-    },
-  });
-  // The tests ask the server where they stand, so each visit to the tab re-reads it (the Final Exam may have unlocked since the last visit).
-  const testView = (mountTest) => ({
-    mount(host, ctx) {
-      let cleanup = null, seq = 0;
-      const show = async () => {
-        const mine = ++seq;
-        cleanup?.(); cleanup = null;
-        host.innerHTML = skeleton();
-        try {
-          const c = await mountTest(host, { session: ctx.session });
-          if (mine !== seq) return c?.();
-          cleanup = c ?? null;
-        } catch (e) { if (mine === seq) host.replaceChildren(e.status === 404 ? emptyState("This module isn't available yet", "It will open here when your mentors release it.", icon("lock")) : errorBox(e.message, show)); }
-      };
-      return { badge: () => "", refresh() {}, show, destroy() { seq++; cleanup?.(); } };
-    },
-  });
-
-  // Overview: what the session is about, what you will be able to do (the Mission brief's list), when and where, and how far you are.
-  const overviewView = {
-    mount(host, ctx) {
-      const s = ctx.data.session;
-      const learn = ctx.data.notes?.[0]?.blocks.find((b) => b.type === "list")?.items ?? [];
-      const facts = [["Date", s.date], ["Time", s.time], ["Venue", s.venue]].filter(([, v]) => v);
-      host.innerHTML = `<div class="sd-ov">
-        <section><h2>About this session</h2><p class="sd-lead">${richHtml(ctx.data.session.notesIntro ?? "")}</p>
-          ${facts.length ? `<dl class="sd-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}</section>
-        ${learn.length ? `<section><h2>What you’ll learn</h2><ul class="sd-learn">${learn.map((t) => `<li><span aria-hidden="true">${CHECK}</span><span>${richHtml(t)}</span></li>`).join("")}</ul></section>` : ""}
-        <section><h2>Your progress</h2><div data-prog></div></section></div>`;
-      const draw = () => { $("[data-prog]", host).innerHTML = stepBarHtml(ctx.state.steps) || '<p class="rs-ph-s">Nothing to finish here yet.</p>'; };
-      draw();
-      const unwatch = ctx.state.watch(draw);
-      return { badge: () => "", refresh() {}, destroy: unwatch };
-    },
+  const store = {
+    get: () => { try { return localStorage.getItem(SIDE_KEY); } catch { return null; } },
+    set: (v) => { try { localStorage.setItem(SIDE_KEY, v); } catch { /* the choice lasts for this page only */ } },
   };
 
-  // Built when first needed: tests.js loads after this file.
-  const views = () => ({
-    overview: overviewView, notes: NotesView, activities: ActivitiesView,
-    practice: testView((el, o) => TestsView.mountPractice(el, o)), final: testView((el, o) => TestsView.mountFinal(el, o)),
-    plan: extraView(mountPlan), output: extraView(mountOutput), recap: extraView(mountRecap),
-  });
-  const OVERVIEW_ITEM = { key: "overview", view: "overview", label: "Overview", done: true };
-  const EXTRA_ITEMS = [{ key: "plan", view: "plan", label: "Plan & Uploads", done: true }, { key: "output", view: "output", label: "Session Output", done: true }, { key: "recap", view: "recap", label: "Recap", done: true }];
-
-  const loadData = (session) => {
-    if (!dataCache.has(session.id)) {
-      dataCache.set(session.id, fetch(Founders.fileUrl({ file: session.data }), { credentials: "same-origin" })
-        .then((r) => { if (!r.ok) throw new Error("This session's content is unavailable."); return r.json(); })
-        .catch((e) => { dataCache.delete(session.id); throw e; }));
-    }
-    return dataCache.get(session.id);
-  };
-
-  // "#sessions/1/study-notes": the session by number, then the tab. A bare "#sessions/1" opens the Overview.
-  function resolve(manifest, parts) {
-    const session = manifest.sessions[Number(parts[0]) - 1];
-    const sum = Founders.summary(manifest).sessions.find((s) => s.id === session.id);
-    const V = views();
-    const tabs = [OVERVIEW_ITEM, ...sum.items.filter((it) => it.view && V[it.view]), ...EXTRA_ITEMS];
-    const item = tabs.find((it) => it.key === parts[1]) ?? tabs[0];
-    return { session, tabs, item };
+  // "#tests/practice" -> { tab: "tests", sub: "practice" }; anything unknown opens the Overview.
+  function readHash() {
+    const [t, sub = ""] = location.hash.slice(1).split("/");
+    return { tab: TABS.some((x) => x.id === t) ? t : "overview", sub };
   }
 
-  // ---------- the right-hand "Session content" list ----------
-  const NOTES_KEY = "study-notes", ACTS_KEY = "activities", PRACTICE_KEY = "practice", EXAM_KEY = "real-test";
-  const ring = (inner, cls = "") => `<span class="toc-n ${cls}" aria-hidden="true">${inner}</span>`;
-  const rowBtn = ({ open, label, sub = "", inner, done = false, current = false, locked = false, disabled = false }) =>
+  const ring = (inner) => `<span class="toc-n" aria-hidden="true">${inner}</span>`;
+  const row = ({ open, label, sub = "", inner, done = false, current = false, locked = false, disabled = false }) =>
     `<li><button type="button" class="toc-item${done ? " is-done" : ""}${locked ? " is-locked" : ""}" data-open="${esc(open)}"${current ? ' aria-current="true"' : ""}${disabled ? " disabled" : ""}>
       ${ring(inner)}<span class="toc-t">${esc(label)}${sub ? `<small class="sd-sub">${esc(sub)}</small>` : ""}</span>
       ${done ? '<span class="sr-only">(done)</span>' : ""}${locked ? '<span class="sr-only">(locked)</span>' : ""}</button></li>`;
 
-  async function mount(el, hub, parts, state) {
-    const { manifest } = hub;
-    const { session, tabs, item } = resolve(manifest, parts);
-    const data = await loadData(session);
-    const s = data.session;
-    const V = views();
-    const no = parts[0];
-    const sumOf = () => Founders.summary(manifest).sessions.find((x) => x.id === session.id);
+  function message(shell, title, text, href, label) {
+    shell.panel.innerHTML = `<div class="box empty"><div class="empty-ic">${icon("lock")}</div><h1 class="empty-title">${esc(title)}</h1><p>${esc(text)}</p>
+      <p><a class="btn-pill solid" href="${esc(href)}"><span aria-hidden="true">←</span> ${esc(label)}</a></p></div>`;
+  }
 
-    el.innerHTML = `<div class="rs sd">
-      <a class="tk-back" href="#sessions"><span aria-hidden="true">←</span> All sessions</a>
-      <div class="sd-grid">
-        <section class="sd-player" aria-label="Video lecture">
-          ${playerHtml(state.video, s.title)}
-          <header class="rs-head sd-info">
-            <div class="rs-row"><h1>${esc(s.title)}</h1>
-              <ul class="rs-mentors" aria-label="Mentors">${s.mentors.map((m) => `
-                <li><button type="button" class="rs-chip" title="${esc(m.role)}" aria-label="${esc(`${m.name}, ${m.role}`)}"><span class="rs-av" aria-hidden="true">${esc(Auth.initials(m.name))}</span>${esc(m.name)}</button></li>`).join("")}</ul></div>
-            <div class="sd-watch-row" data-video></div>
-          </header>
-        </section>
-        <div class="rs-tabs sd-tabs" role="tablist" aria-label="Session sections">
-          ${tabs.map((it) => `<button type="button" role="tab" id="rs-tab-${esc(it.key)}" aria-controls="rs-pane-${esc(it.key)}" data-key="${esc(it.key)}" data-view="${esc(it.view)}">${esc(it.label)}<span class="rs-badge"></span></button>`).join("")}
-          <span class="rs-ind" aria-hidden="true"></span></div>
-        <aside class="sd-side" aria-label="Session content">
-          <details class="sd-cur" open>
-            <summary><span>Session content</span><b data-pct></b></summary>
-            <div class="nt-track" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100"><i data-bar></i></div>
-            <div class="sd-secs">
-              <section class="sd-sec" data-sec="video"></section>
-              <section class="sd-sec" id="rs-panel-${NOTES_KEY}"></section>
-              <section class="sd-sec" id="rs-panel-${ACTS_KEY}"></section>
-              <section class="sd-sec" data-sec="tests"></section>
-            </div>
-          </details>
-        </aside>
-        <div class="sd-content">
-          <p class="rs-sub" data-sub></p>
-          ${tabs.map((it) => `<div role="tabpanel" class="rs-pane" id="rs-pane-${esc(it.key)}" aria-labelledby="rs-tab-${esc(it.key)}" hidden></div>`).join("")}
-        </div>
-      </div></div>`;
-
-    const root = $(".sd", el);
-    const tabEls = $$('[role="tab"]', el);
-    const ind = $(".rs-ind", el);
-    const details = $(".sd-cur", el);
-    const subs = { notes: ((t) => (t ?? "").split(/(?<=\.)\s+/).at(-1))(s.notesIntro), activities: data.activities?.subtitle };
-    const video = mountVideoControl($("[data-video]", el), state);
-    const mounted = {};
-    const updateBadges = () => tabEls.forEach((t) => { $(".rs-badge", t).textContent = mounted[t.dataset.key]?.badge() ?? ""; });
-    for (const it of tabs) {
-      // Only the notes and the games draw a list of their own; it lives in the right-hand panel, which is always visible.
-      const panelHost = $(`#rs-panel-${it.key}`, el) ?? document.createElement("div");
-      mounted[it.key] = V[it.view].mount($(`#rs-pane-${it.key}`, el), { data, item: it, session, manifest, state, changed: () => { updateBadges(); drawRows(); }, panelHost });
-    }
-
-    // Video, Practice Test and Final Exam rows, and the progress bar on top. The notes and the games draw their own sections.
-    let current = null;
-    function drawRows() {
-      const sum = sumOf();
-      const get = (k) => sum.items.find((it) => it.key === k);
-      const notes = get(NOTES_KEY), acts = get(ACTS_KEY), practice = get(PRACTICE_KEY), exam = get(EXAM_KEY);
-      const lockedExam = sum.gate.locked && !exam.done;
-      $('[data-sec="video"]', el).innerHTML = `<p class="rs-ph-t">Video lecture</p><ol class="toc-list">${state.video
-        ? rowBtn({ open: "overview", label: state.video.title || "Video lecture", inner: state.videoWatched ? CHECK : "▶", done: state.videoWatched === true, current: current === "overview" })
-        : rowBtn({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`;
-      $('[data-sec="tests"]', el).innerHTML = `<p class="rs-ph-t">Tests</p><ol class="toc-list">
-        ${rowBtn({ open: PRACTICE_KEY, label: "Practice Test", sub: "No timer, retake any time", inner: practice.done ? CHECK : "P", done: practice.done, current: current === PRACTICE_KEY })}
-        ${rowBtn({ open: EXAM_KEY, label: "Final Exam", sub: exam.done ? "Result saved" : "One try", inner: exam.done ? CHECK : lockedExam ? icon("lock") : "F", done: exam.done, locked: lockedExam, current: current === EXAM_KEY })}</ol>
-        ${lockedExam ? `<p class="sd-lock" role="note">${esc(sum.gate.hint)}</p>` : ""}`;
-      const total = (state.video ? 1 : 0) + notes.need + acts.need + 2;
-      const done = (state.video && state.videoWatched ? 1 : 0) + notes.have + acts.have + (practice.done ? 1 : 0) + (exam.done ? 1 : 0);
-      const pct = total ? Math.round((done / total) * PCT) : 0;
-      $("[data-pct]", el).textContent = `${pct}%`;
-      $("[data-bar]", el).style.width = `${pct}%`;
-      $(".nt-track", el).setAttribute("aria-valuenow", pct);
-    }
-
-    const place = () => { // gold underline slides under the selected tab
-      const t = tabEls.find((x) => x.dataset.key === current);
-      if (!t) return;
-      ind.style.setProperty("--x", `${t.offsetLeft}px`);
-      ind.style.setProperty("--w", `${t.offsetWidth}px`);
+  // ---------- Overview ----------
+  function mountOverview(host, ctx) {
+    const s = ctx.data.session;
+    const learn = ctx.data.notes?.[0]?.blocks.find((b) => b.type === "list")?.items ?? [];
+    const facts = [["Date", s.date], ["Time", s.time], ["Venue", s.venue]].filter(([, v]) => v);
+    host.innerHTML = `<div class="sd-ov">
+      <section><h2>About this session</h2><p class="sd-lead">${richHtml(s.notesIntro ?? "")}</p>
+        ${facts.length ? `<dl class="sd-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}</section>
+      ${learn.length ? `<section><h2>What you’ll learn</h2><ul class="sd-learn">${learn.map((t) => `<li><span aria-hidden="true">${CHECK}</span><span>${richHtml(t)}</span></li>`).join("")}</ul></section>` : ""}
+      <section><h2>Your progress</h2><div data-prog></div></section></div>`;
+    const draw = () => {
+      const ss = ctx.summary();
+      const pct = ctx.percent();
+      const next = ss.items.find((it) => !it.done && !(it.key === "real-test" && ss.gate.locked));
+      const target = { "study-notes": "notes", activities: "activities", practice: "tests/practice", "real-test": "tests/final" }[next?.key];
+      $("[data-prog]", host).innerHTML = `<div class="ss2-ovbar"><div class="nt-track" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><b>${pct}%</b></div>
+        ${next ? `<p class="ss2-next">Up next: <a href="#${target}">${esc(next.label)} <span aria-hidden="true">→</span></a></p>` : '<p class="ss2-next is-done">Session complete. Well done.</p>'}`;
     };
-    function select(key) {
-      const changedTab = current !== key;
-      current = key;
-      $("[data-sub]", el).textContent = subs[tabEls.find((x) => x.dataset.key === key)?.dataset.view] ?? "";
+    draw();
+    return { refresh: draw, destroy() {} };
+  }
+
+  // ---------- Tests: two option cards, and the running test in place of them ----------
+  function mountTests(host, ctx) {
+    let cleanup = null, seq = 0;
+    const reset = () => { seq++; cleanup?.(); cleanup = null; };
+
+    function cards() {
+      reset();
+      const ss = ctx.summary();
+      const practice = ss.items.find((i) => i.key === "practice"), exam = ss.items.find((i) => i.key === "real-test");
+      const info = Founders.practiceInfo(ss.id);
+      const gate = ss.gate;
+      const locked = gate.locked && !exam.done;
+      const examState = exam.done ? "done" : exam.started ? "progress" : locked ? "locked" : "ready";
+      const pendingLinks = gate.missing.map((r) => {
+        const to = { "study-notes": "notes", activities: "activities", practice: "tests/practice" }[r.key];
+        return `<li><a href="#${to}">${esc(r.key === "practice" ? r.label : `${r.label} ${r.have}/${r.need}`)}</a></li>`;
+      }).join("");
+      const stat = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+      host.innerHTML = `<div class="ss2-tests">
+        <article class="ss2-card" data-card="practice" data-state="${practice.done ? "done" : "todo"}" aria-labelledby="tc-p">
+          <header><span class="ss2-card-ic" aria-hidden="true">P</span><div><h2 id="tc-p">Practice Test</h2><p>No timer. Retake it as often as you like.</p></div>
+            <span class="pt-tag ${practice.done ? "is-ok" : "is-neutral"}">${practice.done ? "Completed" : "Not started"}</span></header>
+          <dl class="ss2-stats">${stat("Best score", info ? `${info.best ?? info.score}/${info.total}` : "–")}${stat("Attempts", info?.attempts ?? 0)}</dl>
+          <footer><a class="btn-pill solid" href="#tests/practice">${practice.done ? "Retake practice" : "Start practice"}</a></footer>
+        </article>
+        <article class="ss2-card" data-card="final" data-state="${examState}" aria-labelledby="tc-f">
+          <header><span class="ss2-card-ic" aria-hidden="true">${locked ? icon("lock") : "F"}</span><div><h2 id="tc-f">Final Exam</h2><p>One try. The server keeps the clock.</p></div>
+            <span class="pt-tag ${{ done: "is-ok", progress: "is-active", locked: "is-neutral", ready: "is-active" }[examState]}">${{ done: "Completed", progress: "In progress", locked: "Locked", ready: "Unlocked" }[examState]}</span></header>
+          <dl class="ss2-stats">${stat("Score", exam.score ? `${exam.score.score}/${exam.score.total}` : "–")}${stat("Attempts", `${exam.done || exam.started ? 1 : 0} of 1`)}</dl>
+          ${locked ? `<div class="ss2-pending" role="note"><p>Still to do before you can start:</p><ul>${pendingLinks}</ul></div>` : ""}
+          <footer>${locked
+            ? '<button type="button" class="btn-pill solid" disabled>Locked</button>'
+            : `<a class="btn-pill solid" href="#tests/final">${{ done: "View result", progress: "Resume exam", ready: "Start Final Exam" }[examState]}</a>`}</footer>
+        </article></div>`;
+    }
+
+    // The test itself reads the server every time it is shown (the Final Exam may have unlocked since the last visit).
+    async function test(which) {
+      reset();
+      const mine = seq;
+      host.innerHTML = `<a class="ss2-back" href="#tests"><span aria-hidden="true">←</span> All tests</a><div data-test>${skeleton()}</div>`;
+      const slot = $("[data-test]", host);
+      try {
+        const c = await (which === "practice" ? TestsView.mountPractice : TestsView.mountFinal)(slot, { session: ctx.session });
+        if (mine !== seq) return c?.();
+        cleanup = c ?? null;
+      } catch (e) {
+        if (mine !== seq) return;
+        if (e.status === 404) slot.innerHTML = emptyState("This module isn't available yet", "It will open here when your mentors release it.", icon("lock"));
+        else slot.replaceChildren(errorBox(e.message, () => test(which)));
+      }
+    }
+
+    let showing = null;
+    return {
+      show(sub) {
+        if (sub === showing && sub) return; // already on screen (a hash change inside the same test)
+        showing = Object.hasOwn(TEST_KEY, sub) ? sub : "";
+        showing ? test(showing) : cards();
+      },
+      // Progress changed: the cards redraw, a running test is left alone.
+      refresh() { if (!showing && host.isConnected) cards(); },
+      destroy: reset,
+    };
+  }
+
+  // ---------- boot ----------
+  async function start() {
+    Hub.user = await Auth.me();
+    if (!Hub.user) return location.replace("signin.html");
+    document.body.classList.add("hub-page", "session-page");
+    const shell = mountShell({ nav: [], backLink: { href: allSessionsHref(), label: "All sessions" }, user: Hub.user });
+    shell.hideNav();
+    shell.panel.innerHTML = skeleton();
+
+    const params = new URLSearchParams(location.search);
+    const no = Number(params.get("s"));
+    if (params.get("course") !== Founders.COURSE_ID || !Number.isInteger(no) || no < 1) return message(shell, "Session not found", "That link doesn't point to a session.", allSessionsHref(), "All sessions");
+
+    let manifest, detail, data;
+    try {
+      manifest = await Founders.load();
+      const session = manifest.sessions[no - 1];
+      [detail] = await Promise.all([api(sessionsApi(`/${no}`)), Founders.ready()]); // a locked or unknown session is a 404
+      if (!session?.data) return message(shell, "Opens in the course page", "This session is shown on the course page.", `course.html?id=${Founders.COURSE_ID}#sessions/${no}`, "Open it");
+      data = await fetch(Founders.fileUrl({ file: session.data }), { credentials: "same-origin" }).then((r) => { if (!r.ok) throw new Error("This session's content is unavailable."); return r.json(); });
+    } catch (e) {
+      if (e.status === 404) return message(shell, "Session not available", "It will open here when your mentors release it.", allSessionsHref(), "All sessions");
+      return shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
+    }
+    Hub.manifest = manifest;
+    mountPage(shell, manifest, no, detail, data);
+  }
+
+  function mountPage(shell, manifest, no, detail, data) {
+    const session = manifest.sessions[no - 1];
+    const s = data.session;
+    const state = makeSessionState(detail);
+    const summary = () => Founders.summary(manifest).sessions[no - 1];
+    const video = () => (state.video ? { watched: state.videoWatched === true } : null);
+    const percent = () => Founders.sessionPercent(summary(), video());
+    document.title = `Session ${no}: ${s.title} · IICFE Study Hub`;
+    shell.setTopbar({ left: `Session ${no} · ${s.title}`, right: manifest.cohortLabel ?? "" });
+    api("/api/workspace").then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
+
+    // ----- left: the session content panel, in the sidebar's own slot -----
+    shell.setWidget(`<div class="ss2-side">
+      <div class="ss2-id"><span class="ss2-no">Session ${no}</span><p class="ss2-name">${esc(s.title)}</p></div>
+      <div class="ss2-pct"><span>Session progress</span><b data-pct></b></div>
+      <div class="nt-track" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100"><i data-bar></i></div>
+      <section class="sd-sec" data-sec="video"></section>
+      <section class="sd-sec" id="rs-panel-notes"></section>
+      <section class="sd-sec" id="rs-panel-activities"></section>
+      <section class="sd-sec" data-sec="tests"></section></div>`);
+    const side = $("[data-widget]");
+    side.classList.add("is-session");
+
+    // ----- right: video, title, tabs -----
+    shell.panel.innerHTML = `<div class="rs ss2">
+      <section class="ss2-player" aria-label="Video lecture">${playerHtml(state.video, s.title)}<div class="sd-watch-row" data-video></div></section>
+      <header class="ss2-head"><p class="ss2-eyebrow"><span class="ss2-no">Session ${no}</span>${s.subtitle ? `<span>${esc(s.subtitle)}</span>` : ""}</p><h1>${esc(s.title)}</h1></header>
+      <div class="ss2-tabs" role="tablist" aria-label="Session sections">
+        ${TABS.map((t) => `<button type="button" role="tab" id="ss2-tab-${t.id}" aria-controls="ss2-pane-${t.id}" data-tab="${t.id}">${esc(t.label)}<span class="rs-badge"></span></button>`).join("")}</div>
+      ${TABS.map((t) => `<div role="tabpanel" class="ss2-pane" id="ss2-pane-${t.id}" aria-labelledby="ss2-tab-${t.id}" hidden></div>`).join("")}</div>`;
+
+    // ----- sidebar toggle: a button in the top bar. Wide screens fold the panel away; narrow screens already have the burger drawer. -----
+    const app = $("[data-app]");
+    const burger = $(".burger");
+    burger.setAttribute("aria-label", "Open session content");
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "ss2-toggle";
+    toggle.setAttribute("aria-controls", "appSide");
+    toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg><span>Session content</span>';
+    $(".topbar").prepend(toggle);
+    const setFolded = (folded) => {
+      app.classList.toggle("ss2-folded", folded);
+      toggle.setAttribute("aria-expanded", String(!folded));
+      toggle.title = folded ? "Show session content" : "Hide session content";
+    };
+    setFolded(store.get() === "closed");
+    toggle.addEventListener("click", () => { const f = !app.classList.contains("ss2-folded"); setFolded(f); store.set(f ? "closed" : "open"); });
+
+    // ----- views -----
+    const ctx = (item, extra = {}) => ({ data, item, session, sessionNo: no, manifest, state, changed: () => paint(), panelHost: document.createElement("div"), summary, percent, ...extra });
+    const items = Object.fromEntries(summary().items.map((it) => [it.key, it]));
+    const pane = (id) => $(`#ss2-pane-${id}`);
+    const videoControl = mountVideoControl($("[data-video]"), state);
+    const mounted = {
+      overview: mountOverview(pane("overview"), ctx(null)),
+      notes: NotesView.mount(pane("notes"), ctx(items["study-notes"], { panelHost: $("#rs-panel-notes") })),
+      activities: ActivitiesView.mount(pane("activities"), ctx(items.activities, { panelHost: $("#rs-panel-activities") })),
+    };
+    mounted.tests = mountTests(pane("tests"), ctx(null));
+
+    // ----- sidebar rows and the badges -----
+    const tabEls = $$('[role="tab"]');
+    let current = null, currentSub = "";
+    function paint() {
+      const ss = summary();
+      const get = (k) => ss.items.find((it) => it.key === k);
+      const practice = get("practice"), exam = get("real-test");
+      const locked = ss.gate.locked && !exam.done;
+      $('[data-sec="video"]').innerHTML = `<p class="rs-ph-t">Video lecture</p><ol class="toc-list">${state.video
+        ? row({ open: "overview", label: state.video.title || "Video lecture", inner: state.videoWatched ? CHECK : "▶", done: state.videoWatched === true, current: current === "overview" })
+        : row({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`;
+      $('[data-sec="tests"]').innerHTML = `<p class="rs-ph-t">Tests</p><ol class="toc-list">
+        ${row({ open: "tests/practice", label: "Practice Test", sub: "No timer, retake any time", inner: practice.done ? CHECK : "P", done: practice.done, current: current === "tests" && currentSub === "practice" })}
+        ${row({ open: "tests/final", label: "Final Exam", sub: exam.done ? "Result saved" : "One try", inner: exam.done ? CHECK : locked ? icon("lock") : "F", done: exam.done, locked, current: current === "tests" && currentSub === "final" })}</ol>
+        ${locked ? `<p class="sd-lock" role="note">${esc(ss.gate.hint)}</p>` : ""}`;
+      const pct = percent();
+      $("[data-pct]", side).textContent = `${pct}%`;
+      $("[data-bar]", side).style.width = `${pct}%`;
+      $(".nt-track", side).setAttribute("aria-valuenow", pct);
       for (const t of tabEls) {
-        const on = t.dataset.key === key;
+        const it = items[TABS.find((x) => x.id === t.dataset.tab).key];
+        const sum = it && get(it.key);
+        $(".rs-badge", t).textContent = sum ? `${sum.have}/${sum.need}` : "";
+      }
+    }
+
+    function select(tab, sub = "") {
+      const same = tab === current && sub === currentSub;
+      current = tab; currentSub = sub;
+      for (const t of tabEls) {
+        const on = t.dataset.tab === tab;
         t.setAttribute("aria-selected", on);
         t.tabIndex = on ? 0 : -1;
-        $(`#rs-pane-${t.dataset.key}`, el).hidden = !on;
+        pane(t.dataset.tab).hidden = !on;
       }
-      if (changedTab) mounted[key].show?.();
-      drawRows();
-      place();
+      if (!same && tab === "tests") mounted.tests.show(sub);
+      paint();
     }
-    const openTab = (key) => { select(key); location.hash = `#sessions/${no}/${key}`; }; // select now; the router's go() then finds it already open
+    const go = () => { const { tab, sub } = readHash(); select(tab, sub); };
+    const open = (hash) => { const [tab, sub] = hash.split("/"); select(tab, sub ?? ""); if (location.hash !== `#${hash}`) location.hash = `#${hash}`; };
 
-    // The content list: a click opens the tab it belongs to first (synchronously), so the notes' and games' own handlers find a visible pane.
-    $(".sd-side", el).addEventListener("click", (e) => {
-      const open = e.target.closest("[data-open]");
-      const key = open?.dataset.open ?? (e.target.closest("[data-go]") ? NOTES_KEY : e.target.closest("[data-pick]") ? ACTS_KEY : null);
-      if (!key) return;
-      if (key !== current) openTab(key);
-      if (open) (key === "overview" ? $(".sd-player", el) : $(".sd-tabs", el)).scrollIntoView({ block: "start" });
-      if (root.clientWidth < WIDE_PX) details.open = false;
+    // A click in the panel opens its tab first (synchronously), so the notes' and the games' own handlers find a visible pane.
+    side.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-open]");
+      const tab = btn ? btn.dataset.open : e.target.closest("[data-go]") ? "notes" : e.target.closest("[data-pick],[data-pick-up]") ? "activities" : null;
+      if (!tab) return;
+      if (btn) { open(tab); (tab === "overview" ? $(".ss2-player") : $(".ss2-tabs")).scrollIntoView({ block: "start" }); }
+      else if (current !== tab) open(tab);
+      shell.closeDrawer();
     }, true);
-
-    el.addEventListener("click", (e) => {
+    $(".ss2-tabs").addEventListener("click", (e) => { const t = e.target.closest('[role="tab"]'); if (t) open(t.dataset.tab); });
+    $(".ss2-tabs").addEventListener("keydown", (e) => {
       const t = e.target.closest('[role="tab"]');
-      if (t) location.hash = `#sessions/${no}/${t.dataset.key}`; // the router calls go() below
-    });
-    el.addEventListener("keydown", (e) => {
-      const t = e.target.closest('[role="tab"]');
-      if (!t) return;
       const i = tabEls.indexOf(t);
       const to = { [KEYS.left]: i - 1, [KEYS.right]: i + 1, [KEYS.home]: 0, [KEYS.end]: tabEls.length - 1 }[e.key];
-      if (to == null) return;
+      if (!t || to == null) return;
       e.preventDefault();
       const next = tabEls[(to + tabEls.length) % tabEls.length];
       next.focus();
-      location.hash = `#sessions/${no}/${next.dataset.key}`;
+      open(next.dataset.tab);
     });
-
-    // Beside the lesson the list is always open; under it, it is a drawer that starts closed.
-    let wasWide = null;
-    const fit = () => { const wide = root.clientWidth >= WIDE_PX; if (wide !== wasWide) { wasWide = wide; details.open = wide; } place(); };
-    const watchSize = new ResizeObserver(fit); // also fires once the page is attached, when the width first becomes known
-    watchSize.observe(root);
-    document.fonts?.ready.then(place);
-
-    select(item.key);
-    updateBadges();
-    const unwatchState = state.watch(drawRows);
-    const unwatch = Founders.watch(() => { Object.values(mounted).forEach((v) => v.refresh()); updateBadges(); drawRows(); });
-    active = { manifest, no, select };
-    return () => {
-      unwatch();
-      unwatchState();
-      video.destroy();
-      watchSize.disconnect();
-      Object.values(mounted).forEach((v) => v.destroy());
-      active = null;
-    };
+    addEventListener("hashchange", go);
+    state.watch(paint);
+    Founders.watch(() => { Object.values(mounted).forEach((m) => m.refresh?.()); paint(); });
+    addEventListener("pagehide", () => { videoControl.destroy(); Object.values(mounted).forEach((m) => m.destroy?.()); });
+    go();
   }
 
-  // Called by the router on a hash change inside Session 1: switch tab in place so games and scroll position survive.
-  function go(parts) {
-    if (!active || String(parts[0]) !== String(active.no)) return false;
-    active.select(resolve(active.manifest, parts).item.key);
-    return true;
-  }
-
-  return { mount, go, loadData };
+  start();
 })();

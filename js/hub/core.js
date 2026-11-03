@@ -36,7 +36,7 @@ function legacyHash() {
   const key = sid ? c : b;
   if (a === "resources") return `#sessions/${no}${key ? `/${key}` : ""}`;
   if (a === "mock") return "#sessions/1/practice";
-  if (a === "final" || a === "exam") return "#sessions/1/real-test";
+  if (a === "final" || a === "exam") return "#sessions/1/real-test"; // Panels.sessions then forwards these to session.html
   return null;
 }
 // An empty hash is the Overview; any other name the course does not have (a leftover #documents or #certificate included) is "unavailable".
@@ -49,7 +49,7 @@ const currentId = () => {
 Panels.unavailable = async (el) => notAvailableYet(el);
 
 // Small lock beside "Final Exam" while it is locked. The link still works: it opens the Requirements page.
-const LOCK_TIP = "Complete Resources and the Practice Test to unlock";
+const LOCK_TIP = "Complete Study Notes, Activities and the Practice Test to unlock";
 function syncExamLock() {
   const a = document.querySelector('.side-nav a[data-id="final"]');
   if (!a || !Hub.manifest) return;
@@ -88,7 +88,6 @@ async function route(isFirst = false) {
   const panel = shell.panel;
   shell.setActive(id);
   shell.closeDrawer();
-  shell.setRail(id === "sessions" && Sessions.wantsRail()); // Session 1's reading layout gets the 72px icon rail (see shell.js)
   syncExamLock();
 
   // Tabs inside a session switch in place, so a game or a quiz in progress and the scroll position survive.

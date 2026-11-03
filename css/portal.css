@@ -185,6 +185,7 @@ textarea.pt-field { resize: vertical; line-height: 1.5; }
 .up-msg.bad { font-weight: 500; color: var(--danger); }
 .up-msg.ok { color: var(--success); }
 .sub-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sub-status .pt-tag.is-active { border-color: var(--sage-line); background: var(--sage-tint); color: var(--teal); } /* Submitted */
 .sub-v { font: 500 .625rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
 .sub-file { margin: 6px 0 0; font-size: .75rem; color: var(--text-muted); word-break: break-all; }
 .sub-file a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
@@ -351,7 +352,7 @@ button.jr-box:focus-visible { outline: var(--focus-w) solid var(--gold); outline
 }
 
 .ss-bar { height: 6px; overflow: hidden; border-radius: 999px; background: var(--track); }
-.ss-bar i { display: block; height: 100%; border-radius: 999px; background: var(--gold); transition: width .3s; }
+.ss-bar i { display: block; height: 100%; border-radius: 999px; background: var(--teal); transition: width .3s; }
 .ss-bar.is-lg { height: 8px; margin-top: 8px; }
 .ss-steps { margin: 6px 0 0; font: 500 .625rem/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
 

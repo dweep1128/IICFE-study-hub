@@ -181,7 +181,7 @@ app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 
 // ---------- static site ----------
 // Whitelist only: the project root also holds server/, .env and credentials, which must never be served.
-const PAGES = ["index", "courses", "course", "signin", "workspace"];
+const PAGES = ["index", "courses", "course", "session", "signin", "workspace"];
 app.get("/", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
 for (const p of PAGES) app.get([`/${p}`, `/${p}.html`], (req, res) => res.sendFile(path.join(ROOT, `${p}.html`)));
 for (const dir of ["css", "js", "assets", "content"]) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { dotfiles: "ignore" }));

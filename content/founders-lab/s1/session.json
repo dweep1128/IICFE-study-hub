@@ -869,6 +869,16 @@
         ]
       }
     ],
-    "subtitle": "Four team games: spin the market wheel, sort ideas, hustle through the hats and climb the why ladder."
+    "subtitle": "Four team games: spin the market wheel, sort ideas, hustle through the hats and climb the why ladder.",
+    "uploads": [
+      {
+        "slot": "Founder homework",
+        "no": 5,
+        "title": "Founder homework: be a problem detective",
+        "blurb": "Write down 3 problems you notice at home, in school or in your neighbourhood. Pick one and ask “Why?” three times. Then share it here.",
+        "cta": "Submit link",
+        "hint": "Paste a share link to your list (Google Doc, Drive file or a photo of your page)."
+      }
+    ]
   }
 }

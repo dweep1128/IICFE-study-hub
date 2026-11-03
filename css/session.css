@@ -1,0 +1,132 @@
+/* Session page (session.html). Colours come only from tokens.css, the home page's palette:
+   teal / sage = progress, done, "Submitted", the active item and the tab underline; gold = primary buttons and the session-number badge;
+   cream = the side panel. Loads last, so it also re-points the shared notes / activities / tests pieces from gold to teal on this page. */
+
+/* ---------- layout: the sidebar is the session content panel and can fold away on wide screens ---------- */
+.session-page .side { background: var(--cream); }
+.session-page .profile { background: var(--cream); }
+.session-page .side-brand { padding-bottom: 12px; }
+.session-page .pill-back {
+  display: flex; align-items: center; gap: 10px; margin: 0 16px 14px; padding: 12px 16px; border-color: var(--teal); border-radius: 12px;
+  background: var(--teal); color: var(--on-teal); font: 600 .78rem var(--mono); letter-spacing: .1em;
+}
+.session-page .pill-back:hover { background: var(--teal-deep); border-color: var(--teal-deep); color: var(--on-deep); }
+.session-page .pill-back [aria-hidden] { font-size: 1.1rem; line-height: 1; }
+.side-widget.is-session { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 16px; border-top: 0; }
+
+.ss2-toggle { display: none; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: 600 .8125rem var(--font-body); cursor: pointer; }
+.ss2-toggle svg { width: 20px; height: 20px; color: var(--teal); }
+.ss2-toggle:hover { border-color: var(--sage-line); background: var(--sage-tint); }
+.ss2-toggle[aria-expanded="true"] { background: var(--sage-tint); border-color: var(--sage-line); }
+@media (min-width: 900px) {
+  .ss2-toggle { display: inline-flex; }
+  .app.ss2-folded { grid-template-columns: minmax(0, 1fr); }
+  .app.ss2-folded .side { display: none; }
+}
+@media (max-width: 899px) { .session-page .burger { border-color: var(--sage-line); background: var(--sage-tint); color: var(--teal); } }
+
+/* ---------- the panel's contents ---------- */
+.ss2-side { display: grid; gap: 4px; }
+.ss2-id { padding: 4px 4px 14px; }
+.ss2-no { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--gold); color: var(--on-gold); font: 600 .66rem/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.ss2-name { margin: 10px 0 0; font: 700 1.2rem/1.25 var(--font-head); letter-spacing: -.015em; color: var(--text); }
+.ss2-pct { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+.ss2-pct span { font: 500 .66rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+.ss2-pct b { font: 700 1.1rem var(--font-head); color: var(--teal); font-variant-numeric: tabular-nums; }
+.ss2-side > .nt-track { height: 6px; margin: 6px 4px 14px; background: var(--track); }
+.ss2-side .sd-sec { padding: 12px 4px; }
+.ss2-side .sd-sec + .sd-sec { border-top: 1px solid var(--sage-line); }
+.ss2-side .rs-ph-t { font: 500 .66rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
+.ss2-side .toc-list { margin-top: 8px; }
+/* the notes / activities views draw their own heading + bar + list into their sections: keep it to the list */
+.ss2-side [data-sec] .nt-track, .ss2-side .sd-sec .nt-track { margin-top: 8px; }
+.ss2-side .toc-item { padding: 9px 10px; }
+.ss2-side .toc-item:hover { background: var(--sage-tint); }
+.ss2-side .toc-item[aria-current] { background: var(--sage-tint); box-shadow: inset 3px 0 0 var(--teal); font-weight: 600; }
+.ss2-side .toc-item[aria-current] .toc-n { border-color: var(--teal); background: var(--surface); color: var(--teal); }
+.ss2-side .toc-item.is-done[aria-current] .toc-n, .ss2-side .toc-item.is-done .toc-n { border-color: var(--teal); background: var(--teal); color: var(--on-teal); }
+.ss2-side .toc-item:disabled { cursor: default; opacity: .6; }
+.ss2-side .toc-item.is-locked .toc-n { border-color: var(--text-muted); color: var(--text-muted); }
+.ss2-side .ac-sum { margin-top: 12px; }
+
+/* ---------- main column ---------- */
+.ss2 { padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 40px) 64px; max-width: 1180px; }
+.ss2-player .sd-frame { border-radius: 16px; }
+.ss2-player .sd-frame.is-empty { border-color: var(--sage-line); background: var(--cream); }
+.ss2-player .sd-ph-ic { background: var(--sage-tint); color: var(--teal); }
+.ss2-head { margin-top: 24px; }
+.ss2-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; font: 500 .7rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+.ss2-head h1 { margin: 0; font: 400 clamp(1.9rem, 3.4vw, 2.6rem)/1.05 var(--font-display); letter-spacing: .005em; }
+
+.ss2-tabs { display: flex; gap: 28px; margin: 24px 0 0; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.ss2-tabs [role="tab"] { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 12px 0 14px; border: 0; background: none; color: var(--text-muted); font: 600 .9375rem/1.4 var(--font-body); white-space: nowrap; cursor: pointer; }
+.ss2-tabs [role="tab"]:hover { color: var(--text); }
+.ss2-tabs [role="tab"][aria-selected="true"] { color: var(--text); }
+.ss2-tabs [role="tab"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--teal); transform: scaleX(0); transform-origin: left; transition: transform .25s ease; }
+.ss2-tabs [role="tab"][aria-selected="true"]::after { transform: scaleX(1); }
+.ss2-tabs .rs-badge { background: var(--sage-tint); color: var(--teal); }
+.ss2-pane { padding-top: 28px; }
+.ss2-pane[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .ss2-tabs [role="tab"]::after { transition: none; } }
+
+/* overview */
+.ss2 .sd-ov { max-width: 760px; }
+.ss2-ovbar { display: flex; align-items: center; gap: 16px; max-width: 420px; }
+.ss2-ovbar .nt-track { flex: 1; height: 8px; }
+.ss2-ovbar b { font: 700 1rem var(--font-head); color: var(--teal); font-variant-numeric: tabular-nums; }
+.ss2-next { margin: 14px 0 0; font-size: .9375rem; color: var(--text-muted); }
+.ss2-next a { font-weight: 600; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; }
+.ss2-next.is-done { color: var(--teal); font-weight: 600; }
+
+/* ---------- tests: two option cards ---------- */
+.ss2-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; color: var(--teal); font: 600 .875rem var(--font-body); }
+.ss2-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ss2-tests { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@container rs (min-width: 760px) { .ss2-tests { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ss2-card { display: flex; flex-direction: column; gap: 20px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.ss2-card[data-state="done"] { border-color: var(--teal); background: linear-gradient(180deg, var(--sage-tint), var(--surface) 55%); }
+.ss2-card[data-state="locked"] { background: var(--cream); box-shadow: none; }
+.ss2-card header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 14px; }
+.ss2-card-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--gold-tint); color: var(--gold-dark); font: 700 1rem var(--font-head); }
+.ss2-card[data-state="done"] .ss2-card-ic { background: var(--teal); color: var(--on-teal); }
+.ss2-card-ic svg { width: 20px; height: 20px; }
+.ss2-card h2 { margin: 0; font: 700 1.25rem/1.25 var(--font-head); letter-spacing: -.015em; }
+.ss2-card header p { margin: 4px 0 0; color: var(--text-muted); font-size: .875rem; line-height: 1.5; }
+.ss2-stats { display: flex; gap: 32px; margin: 0; padding: 16px 0; border-block: 1px solid var(--border); }
+.ss2-stats dt { font: 500 .625rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+.ss2-stats dd { margin: 4px 0 0; font: 700 1.5rem/1.1 var(--font-head); font-variant-numeric: tabular-nums; }
+.ss2-pending { padding: 12px 16px; border-radius: 12px; background: var(--surface); border: 1px dashed var(--sage-line); }
+.ss2-pending p { margin: 0 0 8px; font-size: .875rem; color: var(--text-muted); }
+.ss2-pending ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ss2-pending a { display: inline-block; padding: 3px 12px; border-radius: 999px; background: var(--sage-tint); color: var(--teal); font: 600 .8125rem var(--font-body); }
+.ss2-pending a:hover { background: var(--teal); color: var(--on-teal); }
+.ss2-card footer { margin-top: auto; }
+
+/* ---------- re-point the shared pieces from gold to teal on this page ---------- */
+.session-page .pt-tag.is-active, .session-page .pt-tag.is-ok { border-color: var(--sage-line); background: var(--sage-tint); color: var(--teal); }
+.session-page .ac-no { background: var(--gold-tint); color: var(--gold-dark); }
+.session-page .ac-game.is-done .ac-no { background: var(--teal); color: var(--on-teal); }
+.session-page .ts-g[aria-current] { outline-color: var(--teal); }
+.session-page .nt-toc-m summary::after { color: var(--teal); }
+
+/* ---------- the upload item inside Activities ---------- */
+.ac-up { margin-top: 24px; }
+.ac-up-body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.ui-status { margin-bottom: 4px; }
+.ui-hint { margin: 8px 0 0; font-size: .8125rem; color: var(--text-muted); }
+.ac-up .up { margin-top: 12px; border-color: var(--sage-line); background: var(--cream); }
+.ac-up .pt-field:focus { border-color: var(--teal); }
+.up-prog { height: 4px; margin-top: 10px; overflow: hidden; border-radius: 4px; background: var(--track); }
+.up-prog[hidden] { display: none; }
+.up-prog i { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--teal); animation: up-slide 1.1s ease-in-out infinite; }
+@keyframes up-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+@media (prefers-reduced-motion: reduce) { .up-prog i { width: 100%; animation: none; } }
+.sub-file a:hover { color: var(--teal); }
+.up-msg.ok { color: var(--teal); }
+
+@media (max-width: 640px) {
+  .ss2-card header { grid-template-columns: auto minmax(0, 1fr); }
+  .ss2-card header .pt-tag { grid-column: 1 / -1; justify-self: start; }
+  .ss2-tabs { gap: 20px; }
+}
+.session-page .side { overflow: hidden; } /* only the content list scrolls */
