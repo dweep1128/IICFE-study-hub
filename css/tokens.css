@@ -147,3 +147,51 @@
   --prev-light-bg: #FAFAF8; --prev-light-text: #12261F; --prev-light-accent: #8A6020;
   --prev-dark-bg: #0C1516; --prev-dark-text: #E9F0EF; --prev-dark-accent: #D9A257;
 }
+
+/* Landing page (index.html) tokens. Scoped to .landing so --teal and --gold keep their values on every other page.
+   --teal is a FILL (white text sits on it); --teal-text is teal used AS text, lightened in dark for contrast. */
+.landing {
+  --ink: #0A1020;             /* fill of the dark preview panel; text uses --h-text */
+  --teal: #2F6B66;
+  --teal-text: #2F6B66;
+  --gold: #C9A35A;
+  --gold-text: #B08A3E;       /* darker gold for text on light */
+  --tint: #EAF1EF;
+  --h-bg: #F6F8F7;
+  --h-surface: #FFFFFF;
+  --h-border: #DDE4E2;
+  --h-border-2: #D3DEDB;
+  --h-line: #BFCFCB;
+  --h-line-2: #CBD5D2;
+  --h-rule: #E4EAE8;
+  --h-chrome: #EEF2F1;
+  --h-text: #0A1020;
+  --h-text-2: #4A505C;
+  --h-text-3: #5A606C;
+  --h-nav: #2A3242;
+  --h-grid: rgba(47, 107, 102, .06);
+  --h-atlas-a: #F3F8F7;
+  --h-atlas-b: #E4EEEC;
+  --h-ghost: rgba(10, 16, 32, .09);
+}
+:root[data-theme="dark"] .landing {
+  --teal-text: #6FC2B8;
+  --gold-text: #D9B466;
+  --tint: #172A29;
+  --h-bg: #0C1516;
+  --h-surface: #131F20;
+  --h-border: #243536;
+  --h-border-2: #2B4040;
+  --h-line: #34504F;
+  --h-line-2: #34504F;
+  --h-rule: #243536;
+  --h-chrome: #182627;
+  --h-text: #E9F0EF;
+  --h-text-2: #A9BAB8;
+  --h-text-3: #9DB2B0;
+  --h-nav: #D3DFDD;
+  --h-grid: rgba(111, 194, 184, .07);
+  --h-atlas-a: #142122;
+  --h-atlas-b: #101B1C;
+  --h-ghost: rgba(233, 240, 239, .10);
+}
