@@ -116,6 +116,8 @@
 .pt-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
 .pt-foot .tag { margin: 0; font: 600 .625rem var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
 .pt-foot .co { margin: 0; font-size: .75rem; color: var(--text-muted); text-align: right; }
+.pt-foot .co a { color: var(--teal); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.pt-foot .co a:hover, .pt-foot .co a:focus-visible { color: var(--text); text-decoration-thickness: 2px; }
 .pt-foot .rule { width: 96px; height: 1px; margin: 8px 0 0 auto; background: var(--gold); }
 
 @media (min-width: 640px) {
