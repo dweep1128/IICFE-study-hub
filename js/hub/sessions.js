@@ -45,11 +45,20 @@ function timelineHtml(sessions, manifest) {
         <div class="sl-foot">${s.lab && manifest ? nativeMetaHtml(s, manifest) : stepBarHtml(s.steps)}<a class="btn-pill solid" href="${s.lab && manifest ? esc(Founders.href(manifest, `s${s.no}`)) : `#sessions/${s.no}`}">Open session <span aria-hidden="true">→</span></a></div></div></div>`
     : `<div class="sl-card is-locked">${icon("lock")}<p>${esc(s.name)}</p><span class="pt-tag is-neutral">Coming soon</span></div>`}</li>`).join("")}</ol>`;
 }
-async function mountTimeline(el, manifest) {
-  const [{ sessions }] = await Promise.all([api(sessionsApi()), manifest ? Founders.ready() : null]);
+// The list comes with the page's bundle (Hub.sessions, see core.js) and is redrawn when it or the progress changes, only if the result differs.
+async function mountTimeline(el, hub) {
+  const manifest = hub.manifest;
+  if (manifest) await Founders.ready(); // waits for the bundle, which also fills hub.sessions
+  if (!hub.sessions) hub.sessions = await api(sessionsApi());
   el.className = "pt-page pt-stagger";
-  el.innerHTML = `<header class="tk-head"><p class="pt-eyebrow is-gold">Sessions</p><h1 class="pt-h2">Your session plan.</h1>
-    <p class="tk-sub">Open a session for its video, notes, activities and tests. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(sessions, manifest)}`;
+  let shown = "";
+  const draw = () => {
+    const html = `<header class="tk-head"><p class="pt-eyebrow is-gold">Sessions</p><h1 class="pt-h2">Your session plan.</h1>
+    <p class="tk-sub">Open a session for its video, notes, activities and assessment. Locked sessions unlock as the program moves on.</p></header>${timelineHtml(hub.sessions.sessions, manifest)}`;
+    if (html !== shown) { el.innerHTML = html; shown = html; }
+  };
+  draw();
+  return Founders.watch(draw);
 }
 
 // ---------- tab contents: each mounts into `host` and returns { destroy } ----------
@@ -229,7 +238,7 @@ const Sessions = {
 
 Panels.sessions = async (el, hub) => {
   const parts = hashParts().slice(1);
-  if (!parts[0]) return mountTimeline(el, hub.manifest);
+  if (!parts[0]) return mountTimeline(el, hub);
   const no = Number(parts[0]);
   if (!Number.isInteger(no) || no < 1) return notAvailableYet(el);
   // Old bookmarks (#sessions/1/study-notes) and links to a native session open its own page.

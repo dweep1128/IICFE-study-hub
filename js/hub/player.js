@@ -93,11 +93,12 @@ function makeSessionState(detail) {
     ...detail,
     watch: (fn) => { watchers.add(fn); return () => watchers.delete(fn); },
     changed: () => watchers.forEach((fn) => fn()),
-    async reload() {
-      const fresh = await api(sessionsApi(`/${detail.no}`));
+    // The parts of a session's detail that change as the student works (a fresh copy from the server).
+    apply(fresh) {
       Object.assign(state, { steps: fresh.steps, ticked: fresh.ticked, submissions: fresh.submissions, quizResult: fresh.quizResult, videoWatched: fresh.videoWatched });
       state.changed();
     },
+    async reload() { state.apply(await api(sessionsApi(`/${detail.no}`))); },
   };
   return state;
 }

@@ -83,11 +83,9 @@
 .swatch-system::after { background: var(--prev-light-text); box-shadow: 0 8px 0 var(--prev-dark-accent); }
 @media (max-width: 480px) { .seg-opt { min-width: 0; padding-inline: 6px; } }
 
-/* Overall Journey: step list per session */
-.jr-steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
-.jr-steps li { display: flex; align-items: center; gap: 10px; font-size: .94rem; }
-.jr-mark { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 50%; color: var(--on-teal); }
-.jr-mark svg { width: 13px; height: 13px; }
-.jr-steps .done .jr-mark { border-color: var(--teal); background: var(--teal); }
+/* Overall Journey: one card per course */
+.jr-prog { display: flex; align-items: center; gap: 12px; }
+.jr-prog .bar { flex: 1; margin-top: 0; }
+.jr-prog b { font: 700 1rem var(--font-head); color: var(--teal); font-variant-numeric: tabular-nums; }
 
 .cc-hint { margin: 0; color: var(--text-muted); font-size: .875rem; }

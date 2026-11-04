@@ -21,8 +21,18 @@ const fakeApi = { spreadsheets: { values: {
   append: () => next("append"),
   update: (req) => { updates.push(req.requestBody.values[0]); return Promise.resolve({}); },
 } } };
+// The REST wrapper builds the URLs googleapis used to: repeated ranges for batchGet, encoded A1 ranges, the body as `data`.
+const sent = [];
+const rest = require("./sheets-rest").sheets({ auth: { request: (o) => { sent.push(o); return Promise.resolve({ data: {} }); } } });
+rest.spreadsheets.values.batchGet({ spreadsheetId: "id", ranges: ["'A'", "B!1:1"] });
+rest.spreadsheets.values.append({ spreadsheetId: "id", range: "'T'!A1", valueInputOption: "RAW", insertDataOption: "INSERT_ROWS", requestBody: { values: [[1]] } });
+assert.equal(sent[0].url, "https://sheets.googleapis.com/v4/spreadsheets/id/values:batchGet?ranges='A'&ranges=B!1%3A1");
+assert.equal(sent[1].method, "POST");
+assert.equal(sent[1].url, "https://sheets.googleapis.com/v4/spreadsheets/id/values/'T'!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS");
+assert.deepEqual(sent[1].data, { values: [[1]] });
+
 const stub = (id, exports) => { const p = require.resolve(id); require.cache[p] = { id: p, filename: p, loaded: true, exports }; };
-stub("googleapis/build/src/apis/sheets", { sheets: () => fakeApi });
+stub("./sheets-rest", { sheets: () => fakeApi });
 stub("google-auth-library", { GoogleAuth: class {} });
 const sheets = require("./sheets");
 

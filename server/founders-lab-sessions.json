@@ -1,17 +1,17 @@
 {
-  "_note": "Defaults for the session timeline. A row in the LabSessions Sheet tab with the same sessionNo overrides any field it fills in; sessions after the first stay locked (Coming soon) until their row has visible = TRUE. Session 1 is the native one: its title, date and time come from content/founders-lab/s1/session.json.",
+  "_note": "Defaults for the session timeline. A row in the LabSessions Sheet tab with the same sessionNo overrides any field it fills in; sessions after the first stay locked (Coming soon) until their row has visible = TRUE. Session 1 is the native one: its title, date and time come from content/founders-lab/s1/session.json. `description` is the one line shown on the session's card in the session plan; edit it here (or fill a `description` cell in the Sheet row).",
   "sessions": [
-    { "no": 1, "phase": "Foundation", "visible": true },
-    { "no": 2, "name": "Design Thinking", "phase": "Foundation" },
-    { "no": 3, "name": "Validating & Refining Ideas", "phase": "Build" },
-    { "no": 4, "name": "Mentorship Clinic", "phase": "Build" },
-    { "no": 5, "name": "Decode the Market" },
-    { "no": 6, "name": "Startup Ecosystem" },
-    { "no": 7, "name": "Product-Market Fit" },
-    { "no": 8, "name": "Digital & Social Media Marketing" },
-    { "no": 9, "name": "Know Your Competition" },
-    { "no": 10, "name": "Financials & Valuations" },
-    { "no": 11, "name": "Pitch & Lead + Shark Tank Prep" },
-    { "no": 12, "name": "Bespoke Mentoring" }
+    { "no": 1, "phase": "Foundation", "visible": true, "description": "Learn to spot real problems, find their root cause and test whether your idea is worth building." },
+    { "no": 2, "name": "Design Thinking", "phase": "Foundation", "description": "Use design thinking to understand your users and turn what they need into ideas worth testing." },
+    { "no": 3, "name": "Validating & Refining Ideas", "phase": "Build", "description": "Test your idea with real people and sharpen it based on what you learn." },
+    { "no": 4, "name": "Mentorship Clinic", "phase": "Build", "description": "Bring your idea to mentors and get direct feedback on what to fix next." },
+    { "no": 5, "name": "Decode the Market", "description": "Size your market, find your first customers and see who you are up against." },
+    { "no": 6, "name": "Startup Ecosystem", "description": "Meet the investors, incubators and networks that help startups grow." },
+    { "no": 7, "name": "Product-Market Fit", "description": "Learn how to tell when your product truly meets a real market need." },
+    { "no": 8, "name": "Digital & Social Media Marketing", "description": "Plan simple digital and social media campaigns that reach your first customers." },
+    { "no": 9, "name": "Know Your Competition", "description": "Map your competitors and find what makes your idea different." },
+    { "no": 10, "name": "Financials & Valuations", "description": "Read the basic numbers of a startup and learn how companies are valued." },
+    { "no": 11, "name": "Pitch & Lead + Shark Tank Prep", "description": "Build a clear pitch and practise presenting it to a panel." },
+    { "no": 12, "name": "Bespoke Mentoring", "description": "Get one-on-one mentoring shaped around where your startup is now." }
   ]
 }

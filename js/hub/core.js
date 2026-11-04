@@ -7,8 +7,9 @@ const Hub = {
   manifest: null, // content manifest (Founder's Lab only for now), loaded before the first route
   cleanup: null,
   _hub: null,
-  // Overview data is shared by the breadcrumb and the overview panel, so fetch it once.
-  getHub() { return (this._hub ??= api(`/api/courses/${encodeURIComponent(this.courseId)}/hub`).catch((e) => { this._hub = null; throw e; })); },
+  sessions: null, // Founder's Lab: the Sessions list (GET .../lab/sessions), filled by the page's bundle
+  // Overview data is shared by the breadcrumb and the overview panel, so fetch it once (the copy from the last visit answers at once).
+  getHub() { return (this._hub ??= swrApi(`/api/courses/${encodeURIComponent(this.courseId)}/hub`, () => {}).catch((e) => { this._hub = null; throw e; })); },
   url(path) { return `/api/courses/${encodeURIComponent(this.courseId)}/${path}`; },
 };
 
@@ -123,18 +124,32 @@ function showNotFound() {
     <p><a class="btn-pill solid" href="workspace.html#active"><span aria-hidden="true">←</span> Back to My Courses</a></p></div>`;
 }
 
+// Everything a Founder's Lab page shows (progress, the journey, the Sessions list) in one request; a copy from the last visit draws at once.
+const LAB_BUNDLE = "bundle?parts=progress,journey,sessions";
+function bootLab() {
+  const bundle = swrApi(`${Founders.LAB_API}/${LAB_BUNDLE}`, (b) => {
+    Hub.sessions = b.sessions;
+    Founders.setJourney(b.journey);
+    Founders.prime(b.progress); // tells every watcher, the Sessions list included
+  });
+  Founders.boot(Promise.all([bundle, Founders.load()]));
+}
+
 async function startHub() {
+  // Requests start before /api/me answers; a signed-out visitor is sent to sign-in by whichever answers first.
+  const valid = /^[\w-]{1,40}$/.test(Hub.courseId);
+  const isLab = Hub.courseId === Founders.COURSE_ID;
+  if (isLab) bootLab();
+  if (valid) Hub.getHub().catch(() => {}); // handled below
   Hub.user = await Auth.me();
   if (!Hub.user) return location.replace("signin.html");
 
   document.body.classList.add("hub-page");
   shell = mountShell({ nav: NAV, backLink: { href: "workspace.html", label: "My Workspace" }, user: Hub.user, profileHref: "#profile" });
   shell.panel.innerHTML = skeleton();
-  if (!/^[\w-]{1,40}$/.test(Hub.courseId)) return showNotFound();
+  if (!valid) return showNotFound();
 
   try {
-    const isLab = Hub.courseId === Founders.COURSE_ID;
-    if (isLab) { Founders.ready().catch(() => {}); Founders.journey().catch(() => {}); } // in flight while the course loads, not after it
     const [h, manifest] = await Promise.all([Hub.getHub(), isLab ? Founders.load() : null]);
     Hub.title = h.course.title;
     Hub.manifest = manifest;
@@ -144,7 +159,7 @@ async function startHub() {
   }
 
   addEventListener("hashchange", () => route());
-  shell.setTopbar({ left: Hub.title, right: Hub.manifest?.cohortLabel ?? Hub.title }); // always the course name, whatever the profile holds
+  shell.setTopbar({ left: Hub.title, right: "" }); // the course name, whatever the profile holds
   Founders.watch(syncExamLock);
   if (Hub.manifest) {
     Founders.watch(drawJourneyWidget);

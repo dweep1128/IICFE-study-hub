@@ -26,6 +26,7 @@ Demo access is available on request.
   (`js/data.js` holds nav/footer/section labels; `js/main.js` holds home-page copy).
 - `server/index.js`: Express app, auth (plain-text password compare, session as a JWT in an httpOnly, SameSite=Lax cookie), `/api` routes, static files (whitelisted).
 - `server/sheets.js`: the **only** Google Sheets code (`readTab`, `readTabs`, `appendRow`, `updateRow`).
+  It talks to Google through `server/sheets-rest.js` (a few Sheets REST calls on `google-auth-library`; no `googleapis`).
   Swap this file to move to a real database.
 - `server/seed.js`: idempotent tab + demo-data seeding.
 - `server/smoke.test.js`: `node server/smoke.test.js` runs the API against an in-memory fake sheet (no Google needed).
@@ -34,7 +35,7 @@ Demo access is available on request.
 
 `POST /api/login` · `POST /api/logout` · `GET /api/me` · `GET /api/courses` (public) · `GET /api/workspace` (login required, own rows only)
 
-Founder's Lab (all need a login, the student always comes from the session): `GET/POST /api/courses/F001/lab/progress`, `GET/POST /api/courses/F001/lab/:session/practice`, `GET /api/courses/F001/lab/:session/exam`, `POST .../exam/start|save|submit`. The answer keys live in `server/founders-lab-tests.json` (server-only; never sent to the browser). `npm test` runs all three test files.
+Founder's Lab (all need a login, the student always comes from the session): `GET /api/courses/F001/lab/bundle?parts=progress,journey,sessions,course&session=<no>` (what a page needs in one request and one Sheets read; each part equals its own route), `GET/POST /api/courses/F001/lab/progress`, `GET/POST /api/courses/F001/lab/:session/practice`, `GET /api/courses/F001/lab/:session/exam`, `POST .../exam/start|save|submit`. The answer keys live in `server/founders-lab-tests.json` (server-only; never sent to the browser). `npm test` runs all three test files.
 
 ## Sheet tabs (row 1 = headers)
 

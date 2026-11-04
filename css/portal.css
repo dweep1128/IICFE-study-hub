@@ -485,9 +485,6 @@ button.jr-box:focus-visible { outline: var(--focus-w) solid var(--gold); outline
 .sd-ov { display: grid; gap: 40px; max-width: 760px; }
 .sd-ov h2 { margin: 0 0 12px; font: 700 1.25rem var(--font-head); }
 .sd-lead { margin: 0; font-size: 1.0625rem; line-height: 1.65; color: var(--text); }
-.sd-facts { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 20px 0 0; padding: 0; }
-.sd-facts dt { font: 600 .625rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
-.sd-facts dd { margin: 2px 0 0; font-size: .9375rem; }
 .sd-learn { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .sd-learn li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; line-height: 1.55; }
 .sd-learn li > span:first-child { display: grid; place-items: center; height: 1.55em; color: var(--teal); }

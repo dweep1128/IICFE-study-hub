@@ -7,12 +7,24 @@
 .session-page .profile { background: var(--cream); }
 .session-page .side-brand { padding-bottom: 12px; }
 .session-page .pill-back {
-  display: flex; align-items: center; gap: 10px; margin: 0 16px 14px; padding: 12px 16px; border-color: var(--teal); border-radius: 12px;
-  background: var(--teal); color: var(--on-teal); font: 600 .78rem var(--mono); letter-spacing: .1em;
+  display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 12px 16px; border-color: var(--teal); border-radius: 12px;
+  background: var(--teal); color: var(--on-teal); font: 600 .78rem var(--mono); letter-spacing: .1em; transition: none;
 }
 .session-page .pill-back:hover { background: var(--teal-deep); border-color: var(--teal-deep); color: var(--on-deep); }
 .session-page .pill-back [aria-hidden] { font-size: 1.1rem; line-height: 1; }
-.side-widget.is-session { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 16px; border-top: 0; }
+/* The sidebar is ONE scroll container: no inner scroll area. Its header (.ss2-top) sticks to the top, the profile to the bottom,
+   and the widget grows so the profile sits at the bottom even when the list is short. */
+.session-page .side { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+/* A thin bar with no arrow buttons. Chromium ignores ::-webkit-scrollbar once scrollbar-width is set, so the standard properties are
+   only for browsers without it (Firefox). */
+.session-page .side::-webkit-scrollbar { width: 8px; }
+.session-page .side::-webkit-scrollbar-button { display: none; }
+.session-page .side::-webkit-scrollbar-track { background: transparent; }
+.session-page .side::-webkit-scrollbar-thumb { border-radius: 8px; background: var(--sage-line); }
+@supports not selector(::-webkit-scrollbar) { .session-page .side { scrollbar-width: thin; scrollbar-color: var(--sage-line) transparent; } }
+.session-page .profile { position: sticky; bottom: 0; z-index: 2; }
+.side-widget.is-session { flex: 1 0 auto; padding: 0 12px 16px; border-top: 0; }
+.ss2-top { position: sticky; top: 0; z-index: 1; margin: 0 -12px; padding: 4px 12px 2px; background: var(--cream); }
 
 .ss2-toggle { display: none; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: 600 .8125rem var(--font-body); cursor: pointer; }
 .ss2-toggle svg { width: 20px; height: 20px; color: var(--teal); }
@@ -33,7 +45,8 @@
 .ss2-pct { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
 .ss2-pct span { font: 500 .66rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
 .ss2-pct b { font: 700 1.1rem var(--font-head); color: var(--teal); font-variant-numeric: tabular-nums; }
-.ss2-side > .nt-track { height: 6px; margin: 6px 4px 14px; background: var(--track); }
+.ss2-top > .nt-track { height: 6px; margin: 6px 4px 12px; background: var(--track); }
+.ss2-side .nt-track i { transition: none; } /* width is a layout property: the bars jump to their new value instead of animating it */
 .ss2-side .sd-sec { padding: 12px 4px; }
 .ss2-side .sd-sec + .sd-sec { border-top: 1px solid var(--sage-line); }
 .ss2-side .rs-ph-t { font: 500 .66rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
@@ -127,7 +140,6 @@
   .ss2-card header .pt-tag { grid-column: 1 / -1; justify-self: start; }
   .ss2-tabs { gap: 20px; }
 }
-.session-page .side { overflow: hidden; } /* only the content list scrolls */
 
 /* ---------- player size: 16:9, centred, never taller than 60% of the screen (so the tabs start just below it) ---------- */
 .ss2-player { display: grid; justify-items: center; }

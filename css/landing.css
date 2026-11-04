@@ -1,5 +1,9 @@
 /* Landing page (index.html). Values come from design/home-reference/Main.dc.html; colours are tokens in tokens.css (.landing). */
 *, *::before, *::after { box-sizing: border-box; }
+/* Self-hosted (latin subset, preloaded in index.html). "optional": a font that is not ready for the first paint is skipped for that visit
+   instead of swapped in later, so the hero never jumps when the fonts land. */
+@font-face { font-family: "Inter"; src: url(../assets/fonts/inter-latin.woff2) format("woff2"); font-weight: 100 900; font-display: optional; }
+@font-face { font-family: "Bebas Neue"; src: url(../assets/fonts/bebas-neue-latin.woff2) format("woff2"); font-weight: 400; font-display: optional; }
 body.landing { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--h-text); background: var(--h-bg); line-height: 1.6; overflow-x: hidden; }
 .landing :where(a) { color: inherit; text-decoration: none; }
 .landing :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }

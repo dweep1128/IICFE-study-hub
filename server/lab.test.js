@@ -368,6 +368,20 @@ async function unlock(cookie) {
   assert.equal((await post(`${LAB}/submissions`, { uploadType: "activity", itemId: "s2|Prototype photo", url: GOOD }, a)).status, 400, "no upload into a locked session");
   assert.equal((await get(`${LAB}/sessions/abc`, a)).status, 404);
   assert.equal((await get(`${LAB}/sessions/1`, await login("S003"))).status, 404, "not enrolled");
+  assert.match(sessList0.json.sessions[0].description, /^Learn to spot real problems/, "the card line comes from the course data");
+
+  // ---- bundle: each part is exactly what its own route returns ----
+  const bun = await get(`${LAB}/bundle?parts=progress,journey,sessions,course,bogus&session=1`, a);
+  assert.equal(bun.status, 200);
+  assert.deepEqual(bun.json.progress, (await get(`${LAB}/progress`, a)).json);
+  assert.deepEqual(bun.json.journey, (await get(`${LAB}/journey`, a)).json);
+  assert.deepEqual(bun.json.sessions, (await get(`${LAB}/sessions`, a)).json);
+  assert.deepEqual(bun.json.session, (await get(`${LAB}/sessions/1`, a)).json);
+  assert.deepEqual(bun.json.course, { title: "Founder's Lab" });
+  assert.equal("bogus" in bun.json, false, "unknown parts are ignored");
+  assert.equal((await get(`${LAB}/bundle?session=2`, a)).json.session, null, "a locked session is null, as its route's 404");
+  assert.equal((await get(`${LAB}/bundle`, a)).status, 400, "nothing asked for");
+  assert.equal((await get(`${LAB}/bundle?parts=progress`, await login("S003"))).status, 404, "not enrolled");
 
   const QUIZ = [0, 1, 2].map((n) => ({ q: "Question " + n, options: ["A", "B", "C", "D"], answer: n, explain: "because " + n }));
   tabs.LabSessions.push({ sessionNo: "2", visible: "TRUE", date: "2099-01-15", time: "5 PM", duration: "2 hrs", output: "Empathy Map\nPrototype", uploadSlots: "Prototype photo\nObservations",

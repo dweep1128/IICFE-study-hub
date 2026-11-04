@@ -44,10 +44,8 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
   function mountOverview(host, ctx) {
     const s = ctx.data.session;
     const learn = ctx.data.notes?.[0]?.blocks.find((b) => b.type === "list")?.items ?? [];
-    const facts = [["Date", s.date], ["Time", s.time], ["Venue", s.venue]].filter(([, v]) => v);
     host.innerHTML = `<div class="sd-ov">
-      <section><h2>About this session</h2><p class="sd-lead">${richHtml(s.notesIntro ?? "")}</p>
-        ${facts.length ? `<dl class="sd-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}</section>
+      <section><h2>About this session</h2><p class="sd-lead">${richHtml(s.notesIntro ?? "")}</p></section>
       ${learn.length ? `<section><h2>What you’ll learn</h2><ul class="sd-learn">${learn.map((t) => `<li><span aria-hidden="true">${CHECK}</span><span>${richHtml(t)}</span></li>`).join("")}</ul></section>` : ""}
       <section><h2>Your progress</h2><div data-prog></div></section></div>`;
     const draw = () => {
@@ -131,20 +129,25 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
   // ---------- boot ----------
   async function start() {
     // Every request starts now, in parallel; the shell paints as soon as /api/me (no Sheet call) answers.
+    // The session, the progress and the course name come in one bundle; a copy kept from the last visit draws at once.
     const params0 = new URLSearchParams(location.search);
     const no0 = Number(params0.get("s"));
     const valid = params0.get("course") === Founders.COURSE_ID && Number.isInteger(no0) && no0 >= 1;
+    let latest = null, page = null; // page: set once mounted, takes a fresh copy of the bundle
     const early = valid ? {
-      detail: api(sessionsApi(`/${no0}`)), ready: Founders.ready(),
+      bundle: swrApi(`${Founders.LAB_API}/bundle?parts=progress,course&session=${no0}`, (b) => { latest = b; Founders.prime(b.progress); page?.update(b); }),
       data: Founders.load().then((m) => m.sessions[no0 - 1]?.data
         ? fetch(Founders.fileUrl({ file: m.sessions[no0 - 1].data }), { credentials: "same-origin" }).then((r) => { if (!r.ok) throw new Error("This session's content is unavailable."); return r.json(); })
         : null),
     } : null;
-    if (early) Object.values(early).forEach((p) => p.catch(() => {})); // handled below; avoids "unhandled rejection" noise
+    if (early) {
+      Object.values(early).forEach((p) => p.catch(() => {})); // handled below; avoids "unhandled rejection" noise
+      Founders.boot(Promise.all([early.bundle, Founders.load()]));
+    }
     Hub.user = await Auth.me();
     if (!Hub.user) return location.replace("signin.html");
     document.body.classList.add("hub-page", "session-page");
-    const shell = mountShell({ nav: [], backLink: { href: allSessionsHref(), label: "All sessions" }, user: Hub.user });
+    const shell = mountShell({ nav: [], user: Hub.user }); // "All sessions" sits in the content panel's sticky header (mountPage)
     shell.hideNav();
     shell.panel.innerHTML = skeleton();
 
@@ -152,21 +155,24 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     const no = Number(params.get("s"));
     if (params.get("course") !== Founders.COURSE_ID || !Number.isInteger(no) || no < 1) return message(shell, "Session not found", "That link doesn't point to a session.", allSessionsHref(), "All sessions");
 
-    let manifest, detail, data;
+    const unavailable = () => message(shell, "Session not available", "It will open here when your mentors release it.", allSessionsHref(), "All sessions");
+    let manifest, data;
     try {
       manifest = await Founders.load();
       const session = manifest.sessions[no - 1];
-      [detail, , data] = await Promise.all([early.detail, early.ready, early.data]); // a locked or unknown session is a 404
+      [, data] = await Promise.all([early.bundle, early.data]);
       if (!session?.data) return message(shell, "Opens in the course page", "This session is shown on the course page.", `course.html?id=${Founders.COURSE_ID}#sessions/${no}`, "Open it");
     } catch (e) {
-      if (e.status === 404) return message(shell, "Session not available", "It will open here when your mentors release it.", allSessionsHref(), "All sessions");
+      if (e.status === 404) return unavailable();
       return shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
     }
+    if (!latest.session) return unavailable(); // locked or unknown (the bundle's null is the route's 404)
     Hub.manifest = manifest;
-    mountPage(shell, manifest, no, detail, data);
+    const state = mountPage(shell, manifest, no, latest.session, data, latest.course?.title ?? "");
+    page = { update: (b) => { if (b.session) state.apply(b.session); } };
   }
 
-  function mountPage(shell, manifest, no, detail, data) {
+  function mountPage(shell, manifest, no, detail, data, courseTitle) {
     const session = manifest.sessions[no - 1];
     const s = data.session;
     const state = makeSessionState(detail);
@@ -174,14 +180,18 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     const video = () => (state.video ? { watched: state.videoWatched === true } : null);
     const percent = () => Founders.sessionPercent(summary(), video());
     document.title = `Session ${no}: ${s.title} · IICFE Study Hub`;
-    shell.setTopbar({ left: `Session ${no} · ${s.title}`, right: manifest.cohortLabel ?? "" });
+    shell.setTopbar({ left: `Session ${no} · ${s.title}`, right: courseTitle });
     cachedApi("/api/workspace", BELL_MAX_AGE_MS).then((ws) => shell.setNotifications(notificationsFrom(ws))).catch(() => shell.setNotifications([]));
 
     // ----- left: the session content panel, in the sidebar's own slot -----
+    // One scroll container (the sidebar itself): this header sticks to its top, the profile footer to its bottom (session.css).
     shell.setWidget(`<div class="ss2-side">
-      <div class="ss2-id"><span class="ss2-no">Session ${no}</span><p class="ss2-name">${esc(s.title)}</p></div>
-      <div class="ss2-pct"><span>Session progress</span><b data-pct></b></div>
-      <div class="nt-track" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100"><i data-bar></i></div>
+      <div class="ss2-top">
+        <a class="pill-back" href="${esc(allSessionsHref())}"><span aria-hidden="true">←</span><span class="lbl"> All sessions</span></a>
+        <div class="ss2-id"><span class="ss2-no">Session ${no}</span><p class="ss2-name">${esc(s.title)}</p></div>
+        <div class="ss2-pct"><span>Session progress</span><b data-pct></b></div>
+        <div class="nt-track" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="100"><i data-bar></i></div>
+      </div>
       <section class="sd-sec" data-sec="video"></section>
       <section class="sd-sec" id="rs-panel-notes"></section>
       <section class="sd-sec" id="rs-panel-activities"></section>
@@ -230,27 +240,46 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     // ----- sidebar rows and the badges -----
     const tabEls = $$('[role="tab"]');
     let current = null, currentSub = "";
+    // Only what changed is rewritten: paint() runs on every tab switch and progress change, and a rewrite costs a re-layout of the list.
+    const drawn = new WeakMap(); // element -> the HTML last written into it
+    const setHtml = (el, html) => { if (drawn.get(el) !== html) { el.innerHTML = html; drawn.set(el, html); } };
     function paint() {
       const ss = summary();
       const get = (k) => ss.items.find((it) => it.key === k);
       const practice = get("practice"), exam = get("real-test");
       const locked = ss.gate.locked && !exam.done;
-      $('[data-sec="video"]').innerHTML = `<p class="rs-ph-t">Video lecture</p><ol class="toc-list">${state.video
+      setHtml($('[data-sec="video"]'), `<p class="rs-ph-t">Video lecture</p><ol class="toc-list">${state.video
         ? row({ open: "overview", label: state.video.title || "Video lecture", inner: state.videoWatched ? CHECK : "▶", done: state.videoWatched === true, current: current === "overview" })
-        : row({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`;
-      $('[data-sec="tests"]').innerHTML = `<p class="rs-ph-t">Assessment</p><ol class="toc-list">
+        : row({ open: "overview", label: "Video lecture coming soon", inner: "▶", disabled: true })}</ol>`);
+      setHtml($('[data-sec="tests"]'), `<p class="rs-ph-t">Assessment</p><ol class="toc-list">
         ${row({ open: "tests/practice", label: "Practice Test", sub: "No timer, retake any time", inner: practice.done ? CHECK : "P", done: practice.done, current: current === "tests" && currentSub === "practice" })}
         ${row({ open: "tests/final", label: "Final Exam", sub: exam.done ? "Result saved" : "One try", inner: exam.done ? CHECK : locked ? icon("lock") : "F", done: exam.done, locked, current: current === "tests" && currentSub === "final" })}</ol>
-        ${locked ? `<p class="sd-lock" role="note">${esc(ss.gate.hint)}</p>` : ""}`;
+        ${locked ? `<p class="sd-lock" role="note">${esc(ss.gate.hint)}</p>` : ""}`);
       const pct = percent();
-      $("[data-pct]", side).textContent = `${pct}%`;
-      $("[data-bar]", side).style.width = `${pct}%`;
-      $(".nt-track", side).setAttribute("aria-valuenow", pct);
+      const text = `${pct}%`;
+      if ($("[data-pct]", side).textContent !== text) {
+        $("[data-pct]", side).textContent = text;
+        $("[data-bar]", side).style.width = text;
+        $(".nt-track", side).setAttribute("aria-valuenow", pct);
+      }
       for (const t of tabEls) {
         const it = items[TABS.find((x) => x.id === t.dataset.tab).key];
         const sum = it && get(it.key);
-        $(".rs-badge", t).textContent = sum ? `${sum.have}/${sum.need}` : "";
+        const badge = sum ? `${sum.have}/${sum.need}` : "";
+        if ($(".rs-badge", t).textContent !== badge) $(".rs-badge", t).textContent = badge;
       }
+    }
+
+    // On load, the open tab's current item is scrolled into view inside the sidebar (only the sidebar moves, never the page).
+    const SECTION_OF = { overview: '[data-sec="video"]', notes: "#rs-panel-notes", activities: "#rs-panel-activities", tests: '[data-sec="tests"]' };
+    const SCROLL_GAP_PX = 12;
+    function revealCurrent() {
+      const scroller = $("#appSide");
+      const sec = $(SECTION_OF[current] ?? SECTION_OF.overview, side);
+      const target = $("[aria-current]", sec) ?? sec;
+      const box = scroller.getBoundingClientRect(), r = target.getBoundingClientRect();
+      const top = box.top + $(".ss2-top", side).offsetHeight, bottom = box.bottom - $(".profile", scroller).offsetHeight;
+      if (r.top < top || r.bottom > bottom) scroller.scrollTop += r.top - top - SCROLL_GAP_PX;
     }
 
     function select(tab, sub = "") {
@@ -293,6 +322,8 @@ const Hub = { manifest: null, user: null }; // tests.js reads Hub.manifest
     Founders.watch(() => { Object.values(mounted).forEach((m) => m.refresh?.()); paint(); });
     addEventListener("pagehide", () => { videoControl.destroy(); Object.values(mounted).forEach((m) => m.destroy?.()); });
     go();
+    requestAnimationFrame(revealCurrent);
+    return state;
   }
 
   start();

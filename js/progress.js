@@ -24,6 +24,7 @@ const Founders = (() => {
   let journeyCache = null;
   // Loads (or returns the cached) journey. `force` re-reads it from the server. Watchers are told whenever it changes.
   async function journey(force = false) {
+    if (!force && !journeyCache && booting) await booting; // the page's bundle brings it
     if (force || !journeyCache) { journeyCache = await api(`${LAB_API}/journey`); changed(); }
     return journeyCache;
   }
@@ -65,17 +66,29 @@ const Founders = (() => {
     }
   }
 
-  async function refresh() {
-    const manifest = await load();
-    applyServer(manifest, await api(`${LAB_API}/progress`));
+  // The server's answer to GET .../progress (or the `progress` part of a bundle). Kept until the manifest is in, then applied.
+  let serverData = null;
+  function apply() {
+    applyServer(manifestValue, serverData);
     loaded = true;
     lastRefresh = Date.now();
     changed();
   }
+  function prime(data) { serverData = data; if (manifestValue) apply(); }
+
+  async function refresh() {
+    await load();
+    prime(await api(`${LAB_API}/progress`));
+  }
+
+  // A page that asks for its data in one bundle hands the request here, so ready() and journey() wait for it instead of asking again.
+  // `p` resolves once the bundle has been primed and the manifest is loaded; if it fails, ready() falls back to its own request.
+  let booting = null;
+  const boot = (p) => { booting = p.catch(() => { booting = null; }); };
 
   // For the screens that show progress: resolves once progress is loaded, retrying the server on every call; rejects with a message
   // the router turns into an error box with a Retry button.
-  const ready = () => (loaded ? Promise.resolve() : refresh());
+  const ready = () => (loaded ? Promise.resolve() : booting ? booting.then(() => (loaded ? undefined : refresh())) : refresh());
 
   // ---------- saving Study Notes / Activities ----------
   async function flush(key) {
@@ -111,6 +124,7 @@ const Founders = (() => {
   addEventListener("pagehide", () => {
     for (const [key, p] of pending) {
       const t = writable.get(key);
+      if (t) Auth.dropCache(); // the pages' kept copies are now behind
       if (t) fetch(`${LAB_API}/progress`, { method: "POST", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: t.sessionId, part: t.part, state: p.value }) }).catch(() => {});
     }
   });
@@ -172,6 +186,7 @@ const Founders = (() => {
         purgeLegacy();
         manifestValue = m;
         for (const s of m.sessions) for (const it of s.items) if (BROWSER_PARTS[it.key]) writable.set(it.storageKey, { sessionId: s.id, part: BROWSER_PARTS[it.key] });
+        if (serverData) apply(); // a bundle answered before the manifest
         return m;
       })
       .catch((e) => { manifestPromise = null; throw e; }));
@@ -229,6 +244,14 @@ const Founders = (() => {
     return total ? Math.round((done / total) * PCT) : 0;
   }
 
+  // A course's progress: the mean of every planned session's percent (a locked session counts as 0) and the sessions finished.
+  // `cards` is the Sessions list (GET .../sessions), so each session's number is the one its card on the Sessions page shows.
+  function courseProgress(manifest, cards) {
+    const sum = summary(manifest);
+    const pcts = cards.map((c) => { const ss = c.lab && sum.sessions[c.no - FIRST_SESSION_NO]; return ss ? sessionPercent(ss, c.lab.video) : 0; });
+    return { percent: pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0, sessionsDone: pcts.filter((p) => p === PCT).length, sessionsTotal: pcts.length };
+  }
+
   // A session has its own page, session.html?course=F001&s=1, and the step is its hash: #notes, #activities, #tests/practice, #tests/final.
   const STEP_HASH = { "study-notes": "notes", activities: "activities", practice: "tests/practice", "real-test": "tests/final", overview: "overview" };
   const hash = (manifest, sessionId, key) => `#${STEP_HASH[key] ?? key}`;
@@ -251,5 +274,5 @@ const Founders = (() => {
   // The lab API for one session (practice, exam). `api` redirects to sign-in on 401 and throws an Error with the server's message otherwise.
   const lab = (sessionId, path, opts) => api(`${LAB_API}/${sessionId}/${path}`, opts);
 
-  return { COURSE_ID, journey, journeyNow, setJourney, load, ready, refresh, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam, recordUpload, uploadsOf, sessionPercent, practiceInfo: (id) => practiceInfo.get(id) ?? null };
+  return { COURSE_ID, LAB_API, journey, journeyNow, setJourney, load, ready, refresh, prime, boot, courseProgress, summary, examGate, hash, href, fileUrl, watch, readKey, writeKey, lab, recordPractice, recordExam, recordUpload, uploadsOf, sessionPercent, practiceInfo: (id) => practiceInfo.get(id) ?? null };
 })();

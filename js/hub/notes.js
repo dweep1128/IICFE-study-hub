@@ -194,11 +194,13 @@ const NotesView = (() => {
       else if (!BLOCKS[b.type]) console.warn(`Unknown note block type: ${b.type}`);
     }));
 
+    let tocShown = "";
     const draw = () => {
       const done = readDone();
       const got = sections.reduce((n, s) => n + (done[s.id] ? s.xp : 0), 0);
       const count = required.filter((id) => done[id]).length; // only the required notes count, the same as the session page and the sessions list
-      all("[data-toc]").forEach((ol) => { ol.innerHTML = tocItems(done); });
+      const toc = tocItems(done);
+      if (toc !== tocShown) { tocShown = toc; all("[data-toc]").forEach((ol) => { ol.innerHTML = toc; }); } // progress events are frequent; the list rarely changes
       all("[data-prog-text]").forEach((el) => { el.textContent = `${count} of ${required.length} done`; el.title = `${got} / ${totalXp} XP`; });
       all("[data-prog-fill]").forEach((el) => { el.style.width = `${pct(count, required.length)}%`; });
       all(".nt-track").forEach((el) => el.setAttribute("aria-valuenow", count));

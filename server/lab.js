@@ -326,31 +326,32 @@ module.exports = function labRouter({ requireLogin }) {
       const st = sessionState(t, sid, s);
       const gate = st.native ? gateOf(t, sid, st.native) : null;
       return {
-        no: s.no, name: s.name, visible: true, phase: s.phase, date: s.date, time: s.time, duration: s.duration, description: sessionsLib.describe(s.activities), steps: st.steps,
+        no: s.no, name: s.name, visible: true, phase: s.phase, date: s.date, time: s.time, duration: s.duration, description: s.description, steps: st.steps,
         lab: gate && { video: s.video ? { watched: st.videoWatched } : null, notes: gate.parts.notes, games: gate.parts.activities, practice: gate.parts.practice.have === 1, exam: st.exam?.submittedAt ? "submitted" : st.exam ? "in_progress" : "none" },
       };
     });
   }
 
+  const sessionsBody = (t, sid) => ({ sessions: sessionCards(t, sid), next: sessionsLib.nextSession(sessionsLib.buildSessions(t.LabSessions), todayIST()) });
   r.get("/sessions", route(async (req, res) => {
-    const t = await load(req, SESSION_TABS);
-    res.json({ sessions: sessionCards(t, req.user.studentId), next: sessionsLib.nextSession(sessionsLib.buildSessions(t.LabSessions), todayIST()) });
+    res.json(sessionsBody(await load(req, SESSION_TABS), req.user.studentId));
   }));
 
   // A locked or unknown session is a 404, so its content is never sent.
-  r.get("/sessions/:no", route(async (req, res) => {
-    const no = sessionNo(req);
-    const t = await load(req, SESSION_TABS);
+  function sessionDetail(t, sid, no) {
     const s = no ? sessionFor(t, no) : null;
     if (!s?.visible) throw httpError(404, NOT_AVAILABLE);
-    const st = sessionState(t, req.user.studentId, s);
-    res.json({
+    const st = sessionState(t, sid, s);
+    return {
       no: s.no, sessionId: sessionsLib.idOf(s.no), native: !!st.native, name: s.name, phase: s.phase, date: s.date, time: s.time, duration: s.duration, readingUrl: s.readingUrl,
       activities: s.activities, instructions: s.instructions, outputs: s.outputs, recap: s.recap, takeaways: s.takeaways, uploadSlots: s.slots,
       video: s.video, videoWatched: st.videoWatched,
       quiz: s.quiz.map(({ q, options }) => ({ q, options })), ticked: st.ticked, submissions: st.subs, steps: st.steps,
       quizResult: st.quiz ? { bestScore: st.quiz.best, attempts: st.quiz.attempts } : null, hasPitchTimer: sessionsLib.PITCH_TIMER_SEED.test(s.instructions),
-    });
+    };
+  }
+  r.get("/sessions/:no", route(async (req, res) => {
+    res.json(sessionDetail(await load(req, SESSION_TABS), req.user.studentId, sessionNo(req)));
   }));
 
   // Body: { ticked: [output index, ...] }
@@ -447,9 +448,8 @@ module.exports = function labRouter({ requireLogin }) {
   }));
 
   // ----- progress -----
-  r.get("/progress", route(async (req, res) => {
-    const sid = req.user.studentId;
-    const t = await load(req, [PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB]);
+  const PROGRESS_TABS = [PROGRESS_TAB, ATTEMPTS_TAB, SUBMISSIONS_TAB];
+  function progressBody(t, sid) {
     const sessions = {};
     for (const s of SESSIONS.values()) {
       const row = t.LabExamAttempts.find((a) => a.attemptKey === attemptKey(sid, s.id));
@@ -462,7 +462,34 @@ module.exports = function labRouter({ requireLogin }) {
         exam: row?.submittedAt ? { state: "submitted", score: Number(row.score), total: Number(row.total), seconds: Number(row.seconds) } : row ? { state: "in_progress" } : { state: "none" },
       };
     }
-    res.json({ sessions });
+    return { sessions };
+  }
+  r.get("/progress", route(async (req, res) => {
+    res.json(progressBody(await load(req, PROGRESS_TABS), req.user.studentId));
+  }));
+
+  // ----- bundle: what one page needs, in one request and one Sheets read -----
+  // GET /bundle?parts=progress,journey,sessions,course&session=<no>  ->  { progress?, journey?, sessions?, course?, session? }
+  // Each part is exactly what its own route returns; `session` is null when that session is locked or unknown (its route's 404).
+  const BUNDLE = {
+    progress: { tabs: PROGRESS_TABS, body: progressBody },
+    journey: { tabs: JOURNEY_TABS, body: journeyOf },
+    sessions: { tabs: SESSION_TABS, body: sessionsBody },
+    course: { tabs: ["Courses"], body: (t) => ({ title: t.Courses.find((c) => c.courseId === COURSE_ID)?.title || "" }) }, // the name the course page shows
+  };
+  r.get("/bundle", route(async (req, res) => {
+    const sid = req.user.studentId;
+    const parts = [...new Set(String(req.query.parts ?? "").split(","))].filter((p) => Object.hasOwn(BUNDLE, p));
+    const no = req.query.session === undefined ? null : Number(req.query.session);
+    if (!parts.length && no === null) throw httpError(400, "Invalid request.");
+    const tabs = new Set([...parts.flatMap((p) => BUNDLE[p].tabs), ...(no === null ? [] : SESSION_TABS)]);
+    const t = await load(req, [...tabs]);
+    const out = Object.fromEntries(parts.map((p) => [p, BUNDLE[p].body(t, sid)]));
+    if (no !== null) {
+      const valid = Number.isInteger(no) && no > 0 && no < MAX_SESSION_NO;
+      try { out.session = sessionDetail(t, sid, valid ? no : 0); } catch (e) { if (e.status !== 404) throw e; out.session = null; }
+    }
+    res.json(out);
   }));
 
   r.post("/progress", route(async (req, res) => {

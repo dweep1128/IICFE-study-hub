@@ -12,13 +12,16 @@ const DONE_PCT = 100;
 const isDone = (c) => c.status === "completed" || (c.modulesTotal > 0 && c.progressPct >= DONE_PCT);
 let courses = { active: [], completed: [] };
 let manifest = null; // Founder's Lab content manifest; null if it failed to load (the card then shows 0 progress)
+let labSessions = null; // Founder's Lab Sessions list (the course page's own source), null until it loads
 
-// Founder's Lab progress is read in the browser (see js/progress.js), so it overrides the server's module numbers.
+// Founder's Lab progress is read in the browser (see js/progress.js) with the course page's numbers, so it overrides the server's modules.
 function applyFounders() {
-  const sum = manifest && Founders.summary(manifest);
+  if (!manifest || !labSessions) return;
+  const sum = Founders.summary(manifest);
+  const cp = Founders.courseProgress(manifest, labSessions.sessions);
   for (const c of [...ws.activeCourses, ...ws.completedCourses]) {
-    if (c.courseId !== Founders.COURSE_ID || !sum) continue;
-    Object.assign(c, { fl: sum, progressPct: sum.percent, modulesCompleted: sum.sessionsDone, modulesTotal: sum.sessionsTotal, currentModule: "" });
+    if (c.courseId !== Founders.COURSE_ID) continue;
+    Object.assign(c, { fl: sum, unit: "session", progressPct: cp.percent, modulesCompleted: cp.sessionsDone, modulesTotal: cp.sessionsTotal, currentModule: "" });
   }
 }
 const splitCourses = () => {
@@ -27,9 +30,10 @@ const splitCourses = () => {
   courses = { active: all.filter((c) => !isDone(c)), completed: all.filter(isDone) };
 };
 // Overall percentage = mean of each course's percentage (one course today, so this is done steps / total steps).
+const pctOf = (c) => (isDone(c) ? DONE_PCT : c.progressPct);
 const overallPct = () => {
   const all = [...courses.active, ...courses.completed];
-  return all.length ? Math.round(all.reduce((n, c) => n + c.progressPct, 0) / all.length) : 0;
+  return all.length ? Math.round(all.reduce((n, c) => n + pctOf(c), 0) / all.length) : 0;
 };
 // Modules done / total across every course. A course with 0 modules adds 0 to both, so it is left out of the total.
 const moduleTotals = () => [...courses.active, ...courses.completed].reduce(
@@ -54,10 +58,10 @@ function workspaceStatus() {
 
 const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 
-// "2 of 4 steps" once something is finished, "Session 1 in progress" when only started, otherwise "Not started".
-function founderLabel(fl) {
-  if (fl.doneSteps > 0) return `${fl.doneSteps} of ${fl.totalSteps} steps`;
-  const s = fl.sessions.find((x) => x.started);
+// "1 of 12 sessions" once a session is finished, "Session 1 in progress" when only started, otherwise "Not started".
+function founderLabel(c) {
+  if (c.modulesCompleted > 0) return `${c.modulesCompleted} of ${plural(c.modulesTotal, "session")}`;
+  const s = c.fl.sessions.find((x) => x.started);
   return s ? `Session ${s.no} in progress` : "Not started";
 }
 // Always the Overview tab; the course page itself deep-links to the next step from there.
@@ -68,7 +72,7 @@ const workspaceCourseCard = (c, done = false) => `
     <div class="cc-body">
       <div><h3>${esc(c.title)}</h3>${c.description ? `<p>${esc(c.description)}</p>` : ""}</div>
       <div class="cc-side">${done ? `<span class="pill-teal chip cc-done">${CHECK}Completed</span>` : ring(c.progressPct, 76)}
-        <span class="now">${c.fl ? esc(founderLabel(c.fl)) : !done && c.currentModule ? `Now<b>${esc(c.currentModule)}</b>` : `${c.modulesCompleted} of ${c.modulesTotal} modules`}</span></div>
+        <span class="now">${c.fl ? esc(founderLabel(c)) : !done && c.currentModule ? `Now<b>${esc(c.currentModule)}</b>` : `${c.modulesCompleted} of ${c.modulesTotal} modules`}</span></div>
     </div>
     ${!done && c.fl?.next?.hint ? `<p class="cc-hint">${esc(c.fl.next.hint)}</p>` : ""}
     ${!done && c.nextDue ? `<p class="cc-due">${CAL}<span>Next due: <b>${esc(c.nextDue.title)}</b> · ${esc(fmtDate(c.nextDue.dueDate))}</span></p>` : ""}
@@ -102,19 +106,21 @@ const VIEW = {
       <div role="tabpanel" id="panel-completed" aria-labelledby="tab-completed"${sel === "completed" ? "" : " hidden"}>${courses.completed.length ? grid(courses.completed, true) : completedEmpty}</div>`;
   },
 
-  // Real progress only: Founder's Lab sessions and steps from the manifest + what the pages saved. No timeline of demo milestones.
+  // One card per enrolled course, with the same numbers as My Courses (and, for Founder's Lab, as its Sessions page).
   journey(s) {
-    const fl = [...courses.active, ...courses.completed].find((c) => c.fl)?.fl;
-    if (!fl) return empty(s);
+    const all = [...courses.active, ...courses.completed];
+    if (!all.length) return empty(s);
     const p = overallPct();
+    const card = (c) => { const pct = pctOf(c); return `
+        <article class="hub-card item-card"><h3>${esc(c.title)}</h3>
+          <div class="jr-prog"><div class="bar" role="progressbar" aria-label="${esc(c.title)} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><b>${pct}%</b></div>
+          <p>${c.modulesCompleted} of ${plural(c.modulesTotal, c.unit ?? "module")}</p>
+          <div class="foot"><a class="btn-pill solid sm" href="${esc(courseHref(c))}" aria-label="Continue: ${esc(c.title)}">Continue <span class="arrow" aria-hidden="true">→</span></a></div>
+        </article>`; };
     return `<div class="hub-card journey-card"><div class="ring-box">${ring(p, 88)}<span class="mono">Complete</span></div>
-        <div><strong>${p}%</strong><p>${fl.doneSteps} of ${fl.totalSteps} steps · ${fl.sessionsDone} of ${fl.sessionsTotal} sessions complete</p></div></div>
-      <h2 class="section-title" style="margin-top:28px">Sessions</h2>
-      <div class="plain-grid">${fl.sessions.map((se) => `
-        <article class="hub-card item-card"><h3>Session ${se.no}: ${esc(se.title)}</h3>
-          <p>${se.doneCount} of ${se.total} steps${se.complete ? " · complete" : ""}</p>
-          <ul class="jr-steps">${se.items.map((it) => `<li class="${it.done ? "done" : ""}"><span class="jr-mark" aria-hidden="true">${it.done ? CHECK : ""}</span>${esc(it.label)}${it.score ? ` <span class="mono nocase">${it.score.score}/${it.score.total}</span>` : ""}<span class="sr-only">${it.done ? " (done)" : " (not done)"}</span></li>`).join("")}</ul>
-        </article>`).join("")}</div>`;
+        <div><strong>${p}%</strong><p>${courses.completed.length} of ${all.length} courses complete</p></div></div>
+      <h2 class="section-title" style="margin-top:28px">Courses</h2>
+      <div class="plain-grid">${all.map(card).join("")}</div>`;
   },
 
   payments(s) {
@@ -228,6 +234,13 @@ function render() {
 }
 
 async function init() {
+  // Every request starts now, before /api/me answers; copies kept from the last visit draw at once and are re-checked with the server.
+  const manifestP = Founders.load().catch(() => null);
+  const labP = swrApi(`${Founders.LAB_API}/bundle?parts=progress,sessions`, (b) => { labSessions = b.sessions; Founders.prime(b.progress); })
+    .catch(() => null); // not enrolled in Founder's Lab, or it is down: its card keeps the server's numbers
+  let drawn = false, latest = null; // `ws` is set only once everything is in, so the page never draws half its data
+  const wsP = swrApi("/api/workspace", (d) => { latest = d; if (drawn) { ws = d; redraw(); } });
+  wsP.catch(() => {}); // shown below
   const user = me = await Auth.me();
   if (!user) return location.replace("signin.html");
   shell = mountShell({ nav: sections, user });
@@ -237,14 +250,16 @@ async function init() {
   render();
 
   try {
-    [ws, manifest] = await Promise.all([api("/api/workspace").then((d) => (rememberApi("/api/workspace", d), d)), Founders.load().then((m) => Founders.ready().then(() => m)).catch(() => null)]);
+    [, manifest] = await Promise.all([wsP, manifestP, labP]);
+    ws = latest;
   } catch (e) {
     shell.panel.replaceChildren(errorBox(e.message, () => location.reload()));
     return;
   }
+  drawn = true;
   splitCourses();
   // Re-draw when Founder's Lab progress changes (a save in this window, or a refresh after the student comes back).
-  const signature = () => JSON.stringify(Object.values(courses).map((l) => l.map((c) => [c.courseId, c.progressPct, c.fl?.doneSteps])));
+  const signature = () => JSON.stringify(Object.values(courses).map((l) => l.map((c) => [c.courseId, c.progressPct, c.modulesCompleted, c.fl?.doneSteps])));
   Founders.watch(() => {
     const before = signature();
     splitCourses();
@@ -252,6 +267,12 @@ async function init() {
   });
   shell.setNotifications(notificationsFrom(ws));
   render();
+}
+// The server's copy of the workspace differed from the one kept from the last visit.
+function redraw() {
+  splitCourses();
+  shell.setNotifications(notificationsFrom(ws));
+  if (currentId() !== "settings") render(); // never under a half-filled form
 }
 
 init();

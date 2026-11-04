@@ -7,7 +7,6 @@ const s1 = require("../content/founders-lab/s1/session.json");
 const QUIZ_OPTIONS = 4;
 const QUIZ_LENGTH = 10;
 const PITCH_TIMER_SEED = /3-minute timer/i; // a session whose instructions mention it gets the pitch timer
-const DESCRIPTION_ACTIVITIES = 3;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
 
 const isTrue = (v) => /^(true|yes|y|1|x|open)$/i.test(String(v ?? "").trim());
@@ -70,11 +69,6 @@ function parseQuiz(json) {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v.filter(isQuestion).slice(0, QUIZ_LENGTH) : []; } catch { return []; }
 }
 
-const describe = (activities) => {
-  const titles = activities.slice(0, DESCRIPTION_ACTIVITIES).map((a) => a.text.split(" - ")[0].trim());
-  return titles.join(" · ") + (activities.length > DESCRIPTION_ACTIVITIES ? " · …" : "");
-};
-
 /** The full session list: defaults overlaid with Sheet rows, sorted by number. A Sheet row for a number the defaults lack adds a session. */
 function buildSessions(rows) {
   const byNo = new Map(defaults.map((d) => [d.no, { ...d }]));
@@ -85,7 +79,7 @@ function buildSessions(rows) {
     const no = Number(r.sessionNo);
     if (!Number.isInteger(no) || no < 1) continue;
     const cur = byNo.get(no) ?? { no };
-    for (const k of ["name", "phase", "date", "time", "duration", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"]) {
+    for (const k of ["name", "description", "phase", "date", "time", "duration", "readingUrl", "activities", "instructions", "output", "recap", "quizJson", "uploadSlots", "videoUrl", "videoTitle"]) {
       if (no === 1 && k === "uploadSlots") continue;
       if (String(r[k] ?? "").trim() !== "") cur[k] = String(r[k]);
     }
@@ -93,7 +87,7 @@ function buildSessions(rows) {
     byNo.set(no, cur);
   }
   return [...byNo.values()].filter((s) => s.name).sort((a, b) => a.no - b.no).map((s) => ({
-    no: s.no, name: s.name, phase: s.phase ?? "", date: s.date ?? "", time: s.time ?? "", duration: s.duration ?? "", visible: s.visible === true,
+    no: s.no, name: s.name, description: String(s.description ?? "").trim(), phase: s.phase ?? "", date: s.date ?? "", time: s.time ?? "", duration: s.duration ?? "", visible: s.visible === true,
     readingUrl: safeHttp(s.readingUrl), activities: parseActivities(s.activities), instructions: String(s.instructions ?? "").trim(),
     outputs: lines(s.output), ...parseRecap(s.recap), slots: lines(s.uploadSlots), quiz: parseQuiz(s.quizJson),
     video: parseVideo(s.videoUrl) && { ...parseVideo(s.videoUrl), title: String(s.videoTitle ?? "").trim() },
@@ -125,4 +119,4 @@ function gradeQuiz(quiz, answers) {
   return { score: review.filter((r) => r.chosen === r.correct).length, total: quiz.length, review };
 }
 
-module.exports = { parseVideo, buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, describe, PITCH_TIMER_SEED, QUIZ_LENGTH };
+module.exports = { parseVideo, buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, PITCH_TIMER_SEED, QUIZ_LENGTH };

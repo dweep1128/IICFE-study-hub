@@ -13,13 +13,13 @@ async function api(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) { location.replace("signin.html"); throw new Error("Please sign in again."); }
+  if (method !== "GET") Auth.dropCache(); // a write: the pages' kept copies (below) may now be behind
   const data = await res.json().catch(() => null);
   if (!res.ok) throw Object.assign(new Error(data?.error || "Something went wrong. Please try again."), { status: res.status });
   return data;
 }
 
-// Read-only data that may be a minute old (the notification bell): kept in sessionStorage so moving between pages does not refetch it.
-// Never used for progress. Cleared on sign-in and sign-out (auth.js).
+// API answers kept in sessionStorage for this tab. Cleared on sign-in, sign-out and after any write (api() above, auth.js).
 const API_CACHE_PREFIX = "iicfe-api:";
 function rememberApi(path, data) { try { sessionStorage.setItem(API_CACHE_PREFIX + path, JSON.stringify({ at: Date.now(), data })); } catch { /* private mode: no cache */ } }
 async function cachedApi(path, maxAgeMs) {
@@ -29,6 +29,21 @@ async function cachedApi(path, maxAgeMs) {
   return data;
 }
 const BELL_MAX_AGE_MS = 2 * 60 * 1000;
+// Stale-while-revalidate for a page's data: the copy kept from the last visit is drawn at once, then the server is asked every time and
+// onData(data) runs again only if its answer differs. With nothing kept, onData waits for the server. Resolves with the first copy drawn.
+function swrApi(path, onData) {
+  let kept = null;
+  try { kept = JSON.parse(sessionStorage.getItem(API_CACHE_PREFIX + path))?.data ?? null; } catch { /* no cache */ }
+  const live = api(path).then((d) => {
+    rememberApi(path, d);
+    if (kept && JSON.stringify(d) !== JSON.stringify(kept)) onData(d);
+    return d;
+  });
+  if (!kept) return live.then((d) => { onData(d); return d; });
+  live.catch(() => {}); // offline or a hiccup: the kept copy stays on screen
+  onData(kept);
+  return Promise.resolve(kept);
+}
 
 const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 // "2026-10-28" -> "28 Oct 2026". Date-only strings are read as UTC so the day never shifts with the viewer's timezone.

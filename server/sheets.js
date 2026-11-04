@@ -21,8 +21,8 @@ const client = () => {
   if (api) return api;
   const credentials = loadCredentials();
   if (!credentials) throw Object.assign(new Error("No service account credentials found"), { kind: "NO_KEY" });
-  // Only the Sheets client, loaded on first use: the full googleapis package takes ~2.7s to require, which every cold start paid.
-  const { sheets } = require("googleapis/build/src/apis/sheets");
+  // Loaded on first use. sheets-rest.js is a few REST calls on google-auth-library (googleapis took ~300ms to load and ~240MB to install).
+  const { sheets } = require("./sheets-rest");
   const { GoogleAuth } = require("google-auth-library");
   api = sheets({ version: "v4", auth: new GoogleAuth({ credentials, scopes: SCOPES }) }); // kept for the life of the instance: one auth client, token reused
   return api;
