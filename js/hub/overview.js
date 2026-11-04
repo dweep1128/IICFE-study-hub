@@ -89,7 +89,7 @@ function overviewHtml(hub, j, nextSession) {
         <span class="pt-qtxt"><b>${esc(q.title)}</b><span>${esc(q.subtitle)}</span></span><span class="pt-qarrow">${ic("pArrow")}</span></a></li>`).join("")}</ul>
     </section>
 
-    <div class="pt-foot"><p class="tag">${esc(TAGLINE)}</p><div><p class="co">Made by <a href="https://dweep.me" target="_blank" rel="noopener noreferrer">Dweep Shishodia</a></p><div class="rule"></div></div></div>`;
+    <div class="pt-foot"><p class="tag">${esc(TAGLINE)}</p><div><p class="co">${esc(hub.manifest?.cohortLabel ?? hub.title)}</p><div class="rule"></div></div></div>`;
 }
 
 Panels.overview = async (el, hub) => {

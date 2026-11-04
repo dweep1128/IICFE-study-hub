@@ -163,4 +163,6 @@ a.card:hover .arr { background: var(--gold); color: var(--ink); }
 .foot-brand { display: flex; align-items: center; gap: 12px; }
 .foot-brand b { font-weight: 700; font-size: 18px; letter-spacing: .14em; color: var(--h-text); }
 .foot-links { display: flex; gap: 24px; flex-wrap: wrap; }
+.credit-link { color: var(--teal-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.credit-link:hover, .credit-link:focus-visible { color: var(--h-text); text-decoration-thickness: 2px; }
 @media (max-width: 400px) { .btn { padding: 15px 20px; } .hero-ctas .btn, .cta-btns .btn { flex: 1 1 100%; justify-content: center; } }
