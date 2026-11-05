@@ -17,6 +17,7 @@ const { buildJourney, ALL_ITEMS } = require("./journey");
 const submissions = require("./submissions");
 const competitions = require("./competitions");
 const sessionsLib = require("./sessions");
+const drive = require("./drive");
 const rules = require("../js/profile-rules.js"); // the same file the browser's form uses
 const { isId, httpError, parseJson } = require("./util");
 
@@ -197,9 +198,9 @@ async function examState(t, sid, session) {
 }
 
 // ---------- router ----------
-module.exports = function labRouter({ requireLogin }) {
+module.exports = function labRouter({ requireLogin, requireActive }) {
   const r = express.Router({ mergeParams: true });
-  r.use(requireLogin);
+  r.use(requireLogin, requireActive);
 
   // Every lab request: the right course, an enrolled student, and (for per-session routes) a module this server knows.
   async function load(req, tabs) {
@@ -345,7 +346,7 @@ module.exports = function labRouter({ requireLogin }) {
     return {
       no: s.no, sessionId: sessionsLib.idOf(s.no), native: !!st.native, name: s.name, phase: s.phase, date: s.date, time: s.time, duration: s.duration, readingUrl: s.readingUrl,
       activities: s.activities, instructions: s.instructions, outputs: s.outputs, recap: s.recap, takeaways: s.takeaways, uploadSlots: s.slots,
-      video: s.video, videoWatched: st.videoWatched,
+      video: sessionsLib.publicVideo(s, COURSE_ID), videoWatched: st.videoWatched,
       quiz: s.quiz.map(({ q, options }) => ({ q, options })), ticked: st.ticked, submissions: st.subs, steps: st.steps,
       quizResult: st.quiz ? { bestScore: st.quiz.best, attempts: st.quiz.attempts } : null, hasPitchTimer: sessionsLib.PITCH_TIMER_SEED.test(s.instructions),
     };
@@ -377,6 +378,23 @@ module.exports = function labRouter({ requireLogin }) {
     await saveState(req.user.studentId, sessionsLib.idOf(no), "video", { watched: req.body.watched });
     res.json({ ok: true, watched: req.body.watched });
   }));
+
+  // The lecture itself, for a session whose video is a Drive file: one HTTP range per request (server/drive.js). The Drive id stays here.
+  // A failure before any byte is sent is a plain status the <video> element understands; the details stay in the server log.
+  r.get("/sessions/:no/video/stream", async (req, res, next) => {
+    try {
+      const no = sessionNo(req);
+      const t = await load(req, [SESSIONS_TAB]);
+      const s = no ? sessionFor(t, no) : null;
+      if (!s?.visible || s.video?.provider !== "drive") throw httpError(404, NOT_AVAILABLE);
+      await drive.streamFile(s.video.fileId, req, res);
+    } catch (err) {
+      if (res.headersSent) return res.destroy();
+      if (err.expose) return next(err);
+      console.error(`[lab] video ${req.params.no}:`, err.status ?? err.code ?? "", err.message);
+      next(httpError(503, "The video can't be played right now. Please try again in a moment."));
+    }
+  });
 
   // Body: { answers: [option index or -1, ...] }. The answer key lives in the Sheet row and only leaves with the graded result.
   r.post("/sessions/:no/quiz", route(async (req, res) => {

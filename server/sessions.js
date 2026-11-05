@@ -13,8 +13,9 @@ const isTrue = (v) => /^(true|yes|y|1|x|open)$/i.test(String(v ?? "").trim());
 const lines = (s) => String(s ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 const safeHttp = (v) => (/^https?:\/\//i.test(String(v ?? "").trim()) ? String(v).trim() : "");
 /**
- * The embeddable form of a lecture link: { provider, embedUrl } for YouTube, Vimeo or a Google Drive file, else null.
+ * A lecture link, read on the server: { provider, embedUrl } for YouTube or Vimeo, { provider: "drive", fileId } for a Google Drive file, else null.
  * Only an id taken from the link is put into a fixed embed address, so nothing else from the Sheet reaches an iframe, and nothing autoplays.
+ * A Drive file id never leaves the server: see publicVideo.
  */
 function parseVideo(raw) {
   let u;
@@ -35,12 +36,24 @@ function parseVideo(raw) {
   }
   if (host === "drive.google.com") {
     const id = seg[0] === "file" && seg[1] === "d" ? seg[2] : u.searchParams.get("id");
-    return DRIVE_ID.test(id ?? "") ? { provider: "drive", embedUrl: `https://drive.google.com/file/d/${id}/preview` } : null;
+    return DRIVE_ID.test(id ?? "") ? { provider: "drive", fileId: id } : null;
   }
   return null;
 }
 
 const idOf = (no) => `s${no}`; // the manifest's id for session `no`, used for lab progress rows
+
+/**
+ * The video as the browser gets it. A Drive file becomes { provider: "file", src } where src is our own signed-in stream route
+ * (server/drive.js), so its id and link stay on the server; YouTube and Vimeo keep their embed address. null without a video.
+ */
+function publicVideo(s, courseId) {
+  if (!s.video) return null;
+  const { provider, embedUrl, title } = s.video;
+  return provider === "drive"
+    ? { provider: "file", src: `/api/courses/${courseId}/lab/sessions/${s.no}/video/stream`, title }
+    : { provider, embedUrl, title };
+}
 
 /** "YYYY-MM-DD" from an ISO date or any text Date can read ("1 Oct 2026"); "" for "TBD" and anything unreadable. */
 function isoDay(v) {
@@ -119,4 +132,4 @@ function gradeQuiz(quiz, answers) {
   return { score: review.filter((r) => r.chosen === r.correct).length, total: quiz.length, review };
 }
 
-module.exports = { parseVideo, buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, PITCH_TIMER_SEED, QUIZ_LENGTH };
+module.exports = { parseVideo, publicVideo, buildSessions, nextSession, stepsOf, gradeQuiz, isoDay, idOf, PITCH_TIMER_SEED, QUIZ_LENGTH };

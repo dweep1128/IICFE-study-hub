@@ -1,0 +1,9 @@
+{
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-Y1czxW9SblLmxS8kLdXfU5zqNTFBCnOwSj/qxASPDXo=' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-src https://www.youtube.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "same-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), picture-in-picture=(), browsing-topics=()",
+  "Cross-Origin-Opener-Policy": "same-origin"
+}

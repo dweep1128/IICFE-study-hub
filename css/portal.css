@@ -120,7 +120,7 @@
 
 @media (min-width: 640px) {
   .pt-rail ol { grid-template-columns: repeat(4, 1fr); }
-  .pt-quick ul { grid-template-columns: repeat(3, 1fr); }
+  .pt-quick ul { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* minmax: the nowrap card text ellipsises instead of widening the page */
   .pt-quick .pt-line .note { display: block; }
 }
 @media (min-width: 1024px) {
@@ -437,7 +437,11 @@ button.jr-box:focus-visible { outline: var(--focus-w) solid var(--gold); outline
 .sd-content .rs-sub { margin: 0 0 20px; }
 
 .sd-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 16px; background: var(--next-bg); }
-.sd-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+/* Loading state (player.js removes is-loading on the first frame): the shimmer from app.css, shown through the still-empty player. */
+.sd-frame.is-loading { background: linear-gradient(90deg, var(--skel-a) 25%, var(--skel-b) 50%, var(--skel-a) 75%) 0 0 / 200% 100%; animation: shimmer 1.4s linear infinite; }
+.sd-frame iframe, .sd-frame video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.sd-frame video { object-fit: contain; background: transparent; }
+@media (prefers-reduced-motion: reduce) { .sd-frame.is-loading { animation: none; } }
 
 .sd-info { margin-top: 20px; }
 .sd-info h1 { font-size: clamp(1.75rem, 3vw, 2.25rem); }

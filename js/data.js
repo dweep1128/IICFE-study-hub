@@ -7,12 +7,12 @@ const DATA = {
     nav: [
       { label: "Home", href: "index.html" },
       { label: "Courses", href: "courses.html" },
-      { label: "Contact", href: "mailto:info@iicfe-demo.com" },
+      { label: "Contact", href: "mailto:info@iicfe.com" },
     ],
     cta: { label: "Explore Courses", href: "courses.html" }, // gold header button (pages with data-cta)
     footer: {
       blurb: "IICFE Singapore's Study Hub: structured ACCA learning at your own pace.",
-      email: "info@iicfe-demo.com",
+      email: "info@iicfe.com",
       links: [
         { label: "Courses", href: "courses.html" },
         ], // the Sign In / My Workspace link is appended automatically

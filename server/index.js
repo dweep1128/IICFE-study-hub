@@ -2,13 +2,14 @@ try { process.loadEnvFile(require("path").join(__dirname, "..", ".env")); } catc
 const path = require("path");
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const rateLimit = require("express-rate-limit");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const sheets = require("./sheets");
 const createCourseRouter = require("./course");
 const createLabRouter = require("./lab");
-const { lower, toTime, safeUrl, progressFor, isHiddenCourse, isHiddenWebinar, isHiddenPayment } = require("./util");
+const { lower, toTime, safeUrl, progressFor, isHiddenCourse, isHiddenWebinar, isHiddenPayment, httpError } = require("./util");
+const SECURITY_HEADERS = require("./security-headers.json");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = Number(process.env.PORT) || 3000;
@@ -21,9 +22,11 @@ if (!SECRET || SECRET.length < 32) {
 const COOKIE = "iicfe_session";
 const SESSION_TTL_S = 8 * 60 * 60;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS) || 10; // env override exists for the test suite
+const LOGIN_MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS) || 10; // per account and address; env override exists for the test suite
+const LOGIN_MAX_PER_IP = 100; // a whole school signs in from one address, so this cap is per address, far above one class
 const API_WINDOW_MS = 60 * 1000;
-const API_MAX_REQUESTS = 120;
+const API_MAX_REQUESTS = 120; // per signed-in student (per address when signed out)
+const WRITE_MAX_REQUESTS = 60; // saves, submissions and answers per student per minute (the exam autosave sends at most 30)
 const BODY_LIMIT = "10kb";
 const MAX_EMAIL_LEN = 254;
 const MAX_PASSWORD_LEN = 128;
@@ -37,41 +40,65 @@ const safeEqual = (a, b) => {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 };
 
-const cookieOpts = () => ({ httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+// Secure everywhere but plain-http localhost. Vercel sets VERCEL=1 on every deployment, preview included.
+const cookieOpts = () => ({ httpOnly: true, sameSite: "lax", secure: Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production", path: "/" });
 const isActive = (student) => lower(student.status) === "active";
 
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // behind Vercel's proxy: secure cookies and per-client rate limits need the forwarded IP/proto
+// The same headers vercel.json puts on the static pages (checked by server/security.test.js, so the two can't drift).
 app.use((req, res, next) => {
-  res.set({ "X-Content-Type-Options": "nosniff", "X-Frame-Options": "SAMEORIGIN", "Referrer-Policy": "same-origin" });
+  res.set(SECURITY_HEADERS);
   next();
 });
 app.use("/api", express.json({ limit: BODY_LIMIT }), cookieParser(), (req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
-app.use("/api", rateLimit({ windowMs: API_WINDOW_MS, limit: Number(process.env.API_MAX_REQUESTS) || API_MAX_REQUESTS, standardHeaders: true, legacyHeaders: false }));
+
+// Rate limits count per signed-in student, so a class sharing one school address isn't throttled as a single client.
+const sessionOf = (req) => { try { return jwt.verify(req.cookies?.[COOKIE], SECRET, { algorithms: ["HS256"] }); } catch { return null; } };
+const clientKey = (req) => { const p = sessionOf(req); return p ? `student:${p.sid}` : `ip:${ipKeyGenerator(req.ip)}`; };
+const limiter = (opts) => rateLimit({ standardHeaders: true, legacyHeaders: false, keyGenerator: clientKey, ...opts });
+app.use("/api", limiter({ windowMs: API_WINDOW_MS, limit: Number(process.env.API_MAX_REQUESTS) || API_MAX_REQUESTS }));
+app.use("/api", limiter({
+  windowMs: API_WINDOW_MS, limit: Number(process.env.API_MAX_REQUESTS) || WRITE_MAX_REQUESTS,
+  skip: (req) => req.method === "GET" || req.path === "/login" || req.path === "/logout",
+  message: { error: "You're saving too quickly. Please wait a moment and try again." },
+}));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 function requireLogin(req, res, next) {
-  try {
-    const p = jwt.verify(req.cookies[COOKIE], SECRET, { algorithms: ["HS256"] });
-    req.user = { studentId: p.sid, name: p.name, email: p.email };
-    next();
-  } catch {
-    res.status(401).json({ error: "Not signed in" });
+  const p = sessionOf(req);
+  if (!p) return res.status(401).json({ error: "Not signed in" });
+  req.user = { studentId: p.sid, name: p.name, email: p.email };
+  next();
+}
+
+// A signed cookie lasts 8 hours, so the data routes also check the Students row (cached, see sheets.js): a student set to inactive in the
+// Sheet loses access within a minute instead of at the cookie's expiry. /api/me stays cookie-only so a Sheets hiccup never signs anyone out.
+async function requireActive(req, res, next) {
+  let students;
+  try { students = await sheets.readTab("Students"); } catch (err) {
+    console.error("[auth] could not read Students:", err.code ?? "", err.message);
+    return next(httpError(503, "The Study Hub is temporarily unavailable. Please try again in a moment."));
   }
+  const me = students.find((s) => s.studentId === req.user.studentId);
+  return me && isActive(me) ? next() : next(httpError(401, "Not signed in"));
 }
 
 // ---------- auth ----------
-const loginLimiter = rateLimit({
-  windowMs: LOGIN_WINDOW_MS, limit: LOGIN_MAX_ATTEMPTS, standardHeaders: true, legacyHeaders: false,
-  message: { error: "Too many sign-in attempts. Please try again later." },
+const LOGIN_TOO_MANY = { error: "Too many sign-in attempts. Please try again later." };
+const loginPerIp = rateLimit({ windowMs: LOGIN_WINDOW_MS, limit: LOGIN_MAX_PER_IP, standardHeaders: true, legacyHeaders: false, message: LOGIN_TOO_MANY });
+// Guessing one account's password is capped per account and address, without one student's typos locking out the rest of their school.
+const loginPerAccount = rateLimit({
+  windowMs: LOGIN_WINDOW_MS, limit: LOGIN_MAX_ATTEMPTS, standardHeaders: true, legacyHeaders: false, message: LOGIN_TOO_MANY,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${lower(req.body?.email).slice(0, MAX_EMAIL_LEN)}`,
 });
 
-app.post("/api/login", loginLimiter, async (req, res) => {
+app.post("/api/login", loginPerIp, loginPerAccount, async (req, res) => {
   const email = lower(req.body?.email);
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!EMAIL_RE.test(email) || email.length > MAX_EMAIL_LEN || !password || password.length > MAX_PASSWORD_LEN) {
@@ -175,22 +202,32 @@ app.get("/api/workspace", requireLogin, async (req, res) => {
 });
 
 // Mounted after the public routes above: everything in here requires a login.
-app.use("/api/courses/:id/lab", createLabRouter({ requireLogin }));
-app.use("/api", createCourseRouter({ requireLogin, secret: SECRET }));
+app.use("/api/courses/:id/lab", createLabRouter({ requireLogin, requireActive }));
+app.use("/api", createCourseRouter({ requireLogin, requireActive, secret: SECRET }));
 
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 
 // ---------- static site ----------
 // Whitelist only: the project root also holds server/, .env and credentials, which must never be served.
 const PAGES = ["index", "courses", "course", "session", "signin", "workspace"];
+// Signed-in pages are never kept by the browser, so Back after signing out can't replay the last student's screen (vercel.json does the same).
+const PRIVATE_PAGES = new Set(["course", "session", "workspace"]);
 app.get("/", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
-for (const p of PAGES) app.get([`/${p}`, `/${p}.html`], (req, res) => res.sendFile(path.join(ROOT, `${p}.html`)));
+for (const p of PAGES) {
+  app.get([`/${p}`, `/${p}.html`], (req, res) => {
+    if (PRIVATE_PAGES.has(p)) res.set("Cache-Control", "no-store");
+    res.sendFile(path.join(ROOT, `${p}.html`));
+  });
+}
 for (const dir of ["css", "js", "assets", "content"]) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { dotfiles: "ignore", maxAge: dir === "assets" ? "7d" : "1m" })); // same lifetimes as vercel.json
+// Anything else gets the friendly 404 page (vercel.json does the same on Vercel).
+app.use((req, res) => res.status(404).sendFile(path.join(ROOT, "404.html")));
 
 // ---------- errors ----------
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   // httpError()s and body-parser errors carry a client-safe 4xx (or a deliberate 503 "try again"); everything else becomes a generic 500.
+  if (err.status === 401) res.clearCookie(COOKIE, cookieOpts()); // e.g. a deactivated account: the page then sends the student to sign-in
   if (err.expose && err.status >= 400 && err.status < 600) return res.status(err.status).json({ error: err.message });
   if (err.status === 400) return res.status(400).json({ error: "Bad request." });
   // Log the message only: Google errors can carry request details, never the key.

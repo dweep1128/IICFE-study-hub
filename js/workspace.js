@@ -166,7 +166,7 @@ const currentId = () => {
 
 // ---------- My Courses tabs ----------
 function selectTab(name) {
-  const list = $(".tabs", shell.panel);
+  const list = shell && $(".tabs", shell.panel); // a resize can arrive before the shell has mounted
   if (!list) return;
   const bar = $(".tab-bar", list);
   let current;

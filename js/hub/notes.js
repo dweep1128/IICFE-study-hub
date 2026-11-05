@@ -191,7 +191,6 @@ const NotesView = (() => {
       const b = s.blocks[Number(el.dataset.b)];
       const wire = WIRE[b.type];
       if (wire) wire(el, b, blockCtx);
-      else if (!BLOCKS[b.type]) console.warn(`Unknown note block type: ${b.type}`);
     }));
 
     let tocShown = "";

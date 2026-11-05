@@ -2,7 +2,7 @@
 const crypto = require("crypto");
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const rateLimit = require("express-rate-limit");
+const { rateLimit } = require("express-rate-limit");
 const sheets = require("./sheets");
 const { answerQuestion } = require("./chat");
 const { lower, toTime, safeUrl, isId, httpError, parseJson, paragraphsOf, progressFor, isHiddenCourse } = require("./util");
@@ -31,9 +31,9 @@ function examStart(exam) {
   return Number.isNaN(t) ? null : t;
 }
 
-module.exports = function courseRouter({ requireLogin, secret }) {
+module.exports = function courseRouter({ requireLogin, requireActive, secret }) {
   const r = express.Router();
-  r.use(requireLogin); // mounted after the public routes in index.js
+  r.use(requireLogin, requireActive); // mounted after the public routes in index.js
 
   // Loads tabs in ONE Sheets call and confirms the student is enrolled in the course (404 otherwise, so
   // course ids can't be probed).

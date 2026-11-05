@@ -429,7 +429,7 @@ async function unlock(cookie) {
   assert.deepEqual(parseVideo("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=9"), { provider: "youtube", embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" });
   assert.deepEqual(parseVideo("https://youtu.be/dQw4w9WgXcQ"), { provider: "youtube", embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" });
   assert.equal(parseVideo("https://vimeo.com/123456789").embedUrl, "https://player.vimeo.com/video/123456789");
-  assert.equal(parseVideo("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing").embedUrl, "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/preview");
+  assert.deepEqual(parseVideo("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing"), { provider: "drive", fileId: "1AbCdEfGhIjKlMnOp" }, "a Drive id is read on the server only");
   for (const bad of ["", "http://youtu.be/dQw4w9WgXcQ", "https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "https://example.com/video.mp4"]) assert.equal(parseVideo(bad), null, bad);
 
   assert.equal((await get(`${LAB}/sessions/2`, a)).json.video, null, "no link, no video");
@@ -442,7 +442,20 @@ async function unlock(cookie) {
   assert.equal(v0.steps[0].key, "video");
   assert.equal(v0.steps[0].done, false);
   assert.equal((await post(`${LAB}/sessions/2/video`, { watched: "yes" }, a)).status, 400);
-  assert.equal((await post(`${LAB}/sessions/1/video`, { watched: true }, a)).status, 404, "session 1 has no video yet");
+  // A Drive lecture (session 1's row in the Sheet): the page gets our own stream address, never the Drive link or id.
+  const DRIVE_ID = "1DriveFixtureId0123456789";
+  tabs.LabSessions.push({ sessionNo: "1", videoUrl: `https://drive.google.com/file/d/${DRIVE_ID}/view` });
+  const s1 = await get(`${LAB}/sessions/1`, a);
+  assert.deepEqual(s1.json.video, { provider: "file", src: "/api/courses/F001/lab/sessions/1/video/stream", title: "" });
+  assert.ok(!s1.text.includes(DRIVE_ID), "no Drive id in the session (a student's own homework link may still be a Drive link)");
+  const s1list = await get(`${LAB}/bundle?parts=sessions,progress,journey&session=1`, a);
+  assert.ok(!s1list.text.includes(DRIVE_ID), "nor in the bundle");
+  assert.equal((await get(`${LAB}/sessions/1/video/stream`)).status, 401, "the stream needs a session");
+  assert.equal((await get(`${LAB}/sessions/1/video/stream`, await login("S003"))).status, 404, "and an enrolment");
+  assert.equal((await get(`${LAB}/sessions/2/video/stream`, a)).status, 404, "a YouTube session has no stream");
+  assert.equal((await post(`${LAB}/sessions/1/video`, { watched: true }, a)).status, 200, "a Drive lecture can be marked watched like any other");
+  assert.equal((await post(`${LAB}/sessions/1/video`, { watched: false }, a)).status, 200);
+  tabs.LabSessions.pop();
   assert.equal((await post(`${LAB}/sessions/2/video`, { watched: true }, a)).status, 200);
   assert.equal((await get(`${LAB}/sessions/2`, a)).json.steps[0].done, true);
   assert.equal((await get(`${LAB}/sessions/2`, b)).json.steps[0].done, false, "another student's flag is separate");

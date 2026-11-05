@@ -6,12 +6,16 @@ const NOTIF_LIMITS = { due: 3, webinar: 2, news: 2 };
 const RING_STROKE_RATIO = 0.1;
 
 // ---------- helpers ----------
+const OFFLINE_MSG = "Can't reach the server. Check your connection and try again.";
 async function api(path, { method = "GET", body } = {}) {
-  const res = await fetch(path, {
-    method, credentials: "same-origin",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(path, {
+      method, credentials: "same-origin",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch { throw new Error(OFFLINE_MSG); } // offline or the connection dropped mid-request: a clear message, not "Failed to fetch"
   if (res.status === 401) { location.replace("signin.html"); throw new Error("Please sign in again."); }
   if (method !== "GET") Auth.dropCache(); // a write: the pages' kept copies (below) may now be behind
   const data = await res.json().catch(() => null);

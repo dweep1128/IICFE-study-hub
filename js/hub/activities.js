@@ -420,7 +420,6 @@ const ActivitiesView = (() => {
         play.hidden = false;
         play.replaceChildren();
         ENGINES[g.type]?.(g, play, api(g, sec));
-        if (!ENGINES[g.type]) console.warn(`Unknown game type: ${g.type}`);
         $(".ac-toc-m, .nt-toc-m", host).open = false;
         hud();
         grid.scrollIntoView({ behavior: motionOk() ? "smooth" : "auto", block: "start" });

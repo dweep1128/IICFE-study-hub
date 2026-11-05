@@ -8,7 +8,8 @@ const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
 // Credentials come from GOOGLE_SERVICE_ACCOUNT_JSON (hosting dashboards) or the local key file.
 function loadCredentials() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? (fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, "utf8") : null);
+  // A blank value (an unfilled line copied from .env.example) counts as not set.
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || (fs.existsSync(KEY_FILE) ? fs.readFileSync(KEY_FILE, "utf8") : null);
   if (raw == null) return null;
   const creds = JSON.parse(raw);
   // Pasted env vars often carry a literal backslash-n instead of real newlines in the private key.
@@ -79,7 +80,7 @@ function toObjects(values = []) {
 // Student progress, attempts, submissions and checklists are NEVER cached, so they are always fresh after a write.
 // A write through this file drops that tab's entry at once; an edit made directly in the Sheet shows within CACHE_MS.
 // ponytail: per-instance memory cache; several Vercel instances each hold their own copy (fine for read-mostly tabs).
-const CACHE_MS = Number(process.env.SHEETS_CACHE_MS ?? 60_000);
+const CACHE_MS = process.env.SHEETS_CACHE_MS ? Number(process.env.SHEETS_CACHE_MS) : 60_000; // "0" turns the cache off; blank = default
 const CACHED_TABS = new Set(["Students", "Courses", "Enrollments", "Payments", "Certificates", "Webinars", "News", "Modules", "Dues",
   "Resources", "Highlights", "MockTests", "MockQuestions", "LabSessions", "LabCompetitions"]);
 const cache = new Map(); // tab -> { at, rows }
@@ -214,7 +215,7 @@ function serviceAccountEmail() {
   try { return loadCredentials()?.client_email ?? null; } catch { return null; }
 }
 
-const hasCredentials = () => process.env.GOOGLE_SERVICE_ACCOUNT_JSON != null || fs.existsSync(KEY_FILE);
+const hasCredentials = () => Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON) || fs.existsSync(KEY_FILE);
 
 // Tab titles currently in the spreadsheet (also proves auth, API access, sharing and sheet ID).
 async function listTabs() {
@@ -261,4 +262,4 @@ function diagnose(err) {
   return { kind: "UNKNOWN", problem: msg || "Unknown error", fix: "See the message above." };
 }
 
-module.exports = { readTab, readTabs, appendRow, appendRows, updateRow, deleteRow, renameColumn, ensureTab, listTabs, readHeaders, diagnose, serviceAccountEmail, hasCredentials, KEY_FILE };
+module.exports = { readTab, readTabs, appendRow, appendRows, updateRow, deleteRow, renameColumn, ensureTab, listTabs, readHeaders, diagnose, serviceAccountEmail, hasCredentials, loadCredentials, KEY_FILE };

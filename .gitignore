@@ -1,4 +1,9 @@
 server/credentials/
+# Any stray key file, wherever it is saved
+*service-account*.json
+*.pem
+*.p12
+*.key
 node_modules/
 .env*
 !.env.example

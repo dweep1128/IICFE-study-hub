@@ -78,6 +78,7 @@ h1, h2, h3 { font-family: var(--font-head); margin: 0; letter-spacing: -.02em; }
 .eyebrow { margin: 0 0 12px; font: 600 .8rem/1 var(--font-head); letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
 h2 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; font-weight: 700; }
 .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+[data-courses]:empty { min-height: 204px; } /* one card's height, held while the list loads so the footer doesn't jump */
 .card { position: relative; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; transition: transform .25s, box-shadow .25s, border-color .25s; }
 .card:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
 .code { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: var(--teal-tint); color: var(--teal); font: 600 .8rem/1 var(--font-head); letter-spacing: .12em; }

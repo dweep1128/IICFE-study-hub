@@ -3,7 +3,8 @@ const sessionsApi = (path = "") => `/api/courses/${Founders.COURSE_ID}/lab/sessi
 const noop = { destroy() {} };
 
 // ---------- the video lecture ----------
-// The server sends an embed address only for YouTube, Vimeo or Google Drive links (server/sessions.js), with no autoplay. Without one: a calm placeholder.
+// The server sends either { provider: "file", src } (a Drive lecture streamed by our own signed-in API: no Drive link or id reaches the page)
+// or an embed address for YouTube or Vimeo (server/sessions.js), never autoplaying. Without a video: a calm placeholder.
 const PLAY = '<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>';
 // ---------- the session thumbnail: a 16:9 card drawn in SVG from the home palette, reused on the Sessions list ----------
 // One illustration per topic theme. Every colour is a CSS class (portal.css), so light and dark themes both follow tokens.css.
@@ -59,13 +60,26 @@ function videoThumbHtml({ no, title, theme, hasVideo = false, compact = false })
     <span class="vt-play" aria-hidden="true">${PLAY}</span>${hasVideo ? "" : '<span class="vt-soon">Coming soon</span>'}</div>`;
 }
 // The player: the real video when the session has one, else the thumbnail, in the same 16:9 frame (no layout change either way).
+// The frame shimmers (is-loading) until the first frame or the embed has loaded; see the listener below.
 function playerHtml(video, { no, title, theme }) {
+  const label = esc(video?.title || `Video lecture: ${title}`);
+  if (video?.provider === "file") {
+    return `<div class="sd-frame is-loading"><video src="${esc(video.src)}" controls playsinline preload="metadata" aria-label="${label}"
+      controlslist="nodownload noremoteplayback" disablepictureinpicture disableremoteplayback></video></div>`;
+  }
   if (video) {
-    return `<div class="sd-frame"><iframe src="${esc(video.embedUrl)}" title="${esc(video.title || `Video lecture: ${title}`)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
-      allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+    return `<div class="sd-frame is-loading"><iframe src="${esc(video.embedUrl)}" title="${label}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
+      allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>`;
   }
   return `<div class="sd-frame is-thumb">${videoThumbHtml({ no, title, theme })}</div>`;
 }
+// Media and iframe load events don't bubble, so one capturing listener ends the loading state for every player on the page.
+// "suspend" covers iOS Safari, which fetches nothing until the student taps play.
+for (const type of ["loadedmetadata", "loadeddata", "suspend", "load", "error"]) {
+  document.addEventListener(type, (e) => { if (e.target instanceof Element && e.target.matches(".sd-frame > video, .sd-frame > iframe")) e.target.parentElement.classList.remove("is-loading"); }, true);
+}
+// No "Save video as..." menu on the lecture (download and picture-in-picture are also off on the element itself).
+document.addEventListener("contextmenu", (e) => { if (e.target instanceof Element && e.target.closest(".sd-frame > video")) e.preventDefault(); });
 // "Mark video as watched": a toggle saved on the server with the rest of the lab progress. Progress only; it is not part of the Final Exam gate.
 function mountVideoControl(host, st) {
   if (!st.video) { host.innerHTML = ""; return noop; }

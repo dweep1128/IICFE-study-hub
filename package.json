@@ -8,7 +8,7 @@
     "seed": "node server/seed.js",
     "check-db": "node server/check-db.js",
     "setup-lab": "node server/setup-lab.js",
-    "test": "node server/smoke.test.js && node server/lab.test.js && node server/sheets.test.js"
+    "test": "node server/smoke.test.js && node server/lab.test.js && node server/sheets.test.js && node server/security.test.js"
   },
   "engines": {
     "node": ">=20.12"
