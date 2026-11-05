@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+Disallow: /workspace.html
+Disallow: /course.html
+Disallow: /session.html

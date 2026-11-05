@@ -213,6 +213,7 @@ const PAGES = ["index", "courses", "course", "session", "signin", "workspace"];
 // Signed-in pages are never kept by the browser, so Back after signing out can't replay the last student's screen (vercel.json does the same).
 const PRIVATE_PAGES = new Set(["course", "session", "workspace"]);
 app.get("/", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
+app.get("/robots.txt", (req, res) => res.sendFile(path.join(ROOT, "robots.txt")));
 for (const p of PAGES) {
   app.get([`/${p}`, `/${p}.html`], (req, res) => {
     if (PRIVATE_PAGES.has(p)) res.set("Cache-Control", "no-store");
