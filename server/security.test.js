@@ -126,6 +126,10 @@ const tokenCookie = (payload, secret = SECRET, opts = {}) => `iicfe_session=${jw
   const brokenText = await broken.text();
   assert.equal(broken.status, 400);
   assert.ok(!/at .*\.js|SyntaxError|node_modules/.test(brokenText), "no stack trace in an error");
+  assert.deepEqual(JSON.parse(brokenText), { error: "Bad request." }, "nor the parser's own message");
+  const huge = await realFetch(`${BASE}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "x".repeat(20_000) }) });
+  assert.equal(huge.status, 413, "an oversized body is refused");
+  assert.deepEqual(await huge.json(), { error: "That's too much to send at once." });
 
   // ---- 5. security headers: on pages and API answers, and vercel.json sends exactly the same set ----
   const SEC = require("./security-headers.json");

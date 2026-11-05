@@ -226,8 +226,10 @@ app.use((req, res) => res.status(404).sendFile(path.join(ROOT, "404.html")));
 // ---------- errors ----------
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
-  // httpError()s and body-parser errors carry a client-safe 4xx (or a deliberate 503 "try again"); everything else becomes a generic 500.
+  // httpError()s carry a client-safe 4xx (or a deliberate 503 "try again"); everything else becomes a generic message.
   if (err.status === 401) res.clearCookie(COOKIE, cookieOpts()); // e.g. a deactivated account: the page then sends the student to sign-in
+  // body-parser errors (malformed or oversized JSON) carry a `type`; their messages are parser internals, so only the status goes out.
+  if (err.type) return res.status(err.status === 413 ? 413 : 400).json({ error: err.status === 413 ? "That's too much to send at once." : "Bad request." });
   if (err.expose && err.status >= 400 && err.status < 600) return res.status(err.status).json({ error: err.message });
   if (err.status === 400) return res.status(400).json({ error: "Bad request." });
   // Log the message only: Google errors can carry request details, never the key.
